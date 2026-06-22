@@ -99,7 +99,7 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
                         Spacer(modifier = Modifier.width(12.dp))
                         Column {
                             Text(
-                                "z2ray",
+                                "z2ray.com",
                                 color = CyberTextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 20.sp,
