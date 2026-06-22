@@ -20,7 +20,7 @@ abstract class VpnDatabase : RoomDatabase() {
                     VpnDatabase::class.java,
                     "z2ray_database"
                 )
-                .fallbackToDestructiveMigration()
+                .fallbackToDestructiveMigration(dropAllTables = true)
                 .build()
                 INSTANCE = instance
                 instance

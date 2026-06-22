@@ -17,6 +17,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Input
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -90,7 +92,7 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
                 title = {
                     Column {
                         Text(
-                            "Z2ray",
+                            "z2ray.com",
                             color = CyberTextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
@@ -791,7 +793,7 @@ fun SpeedChart(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        imageVector = Icons.Filled.TrendingUp,
+                        imageVector = Icons.AutoMirrored.Filled.TrendingUp,
                         contentDescription = "Graph",
                         tint = BentoPrimary,
                         modifier = Modifier.size(16.dp)
@@ -1968,7 +1970,7 @@ fun SecurityScreen(viewModel: VpnViewModel) {
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(Icons.Filled.Input, contentDescription = "SNI Stealth", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Icon(Icons.AutoMirrored.Filled.Input, contentDescription = "SNI Stealth", tint = CyberPrimary, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Stealth SNI (Active Payload Cloaking)", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                     }
