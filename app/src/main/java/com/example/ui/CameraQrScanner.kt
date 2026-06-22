@@ -115,7 +115,7 @@ fun CameraQrScannerDialog(
                         )
                         Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "z2ray needs camera access to quickly scan QR configurations and subscription links.",
+                            text = "Z2ray needs camera access to quickly scan QR configurations and subscription links.",
                             color = textSecondary,
                             fontSize = 13.sp,
                             textAlign = TextAlign.Center

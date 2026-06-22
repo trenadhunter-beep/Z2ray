@@ -1,9 +1,12 @@
 package com.example.ui
 
+import android.app.Activity
+import android.net.VpnService
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -27,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -36,7 +38,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import com.example.R
 import com.example.data.Subscription
 import com.example.data.VpnLog
 import com.example.data.VpnServer
@@ -87,31 +88,20 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
         topBar = {
             TopAppBar(
                 title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Image(
-                            painter = painterResource(id = R.drawable.img_logo),
-                            contentDescription = "z2ray Logo",
-                            modifier = Modifier
-                                .size(36.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                                .border(1.dp, CyberPrimary, RoundedCornerShape(8.dp))
+                    Column {
+                        Text(
+                            "Z2ray",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 20.sp,
+                            fontFamily = FontFamily.SansSerif
                         )
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column {
-                            Text(
-                                "z2ray.com",
-                                color = CyberTextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 20.sp,
-                                fontFamily = FontFamily.SansSerif
-                            )
-                            Text(
-                                "Iranian Censorship Circumvention Suite",
-                                color = CyberPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Medium
-                            )
-                        }
+                        Text(
+                            "Android Xray Client",
+                            color = CyberPrimary,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Medium
+                        )
                     }
                 },
                 actions = {
@@ -253,6 +243,29 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
     val seconds by viewModel.elapsedSeconds.collectAsStateWithLifecycle()
     val securitySet by viewModel.securitySettings.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val vpnPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            viewModel.toggleConnection()
+        } else {
+            viewModel.onVpnPermissionDenied()
+        }
+    }
+
+    fun requestVpnOrToggle() {
+        if (connectionState == ConnectionState.DISCONNECTED) {
+            val permissionIntent = VpnService.prepare(context)
+            if (permissionIntent != null) {
+                vpnPermissionLauncher.launch(permissionIntent)
+            } else {
+                viewModel.toggleConnection()
+            }
+        } else {
+            viewModel.toggleConnection()
+        }
+    }
 
     val infiniteTransition = rememberInfiniteTransition(label = "pulse")
     val pulseAlpha by infiniteTransition.animateFloat(
@@ -361,7 +374,7 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                             .size(140.dp)
                             .testTag("power_connect_button")
                             .clickable(
-                                onClick = { viewModel.toggleConnection() },
+                                onClick = { requestVpnOrToggle() },
                                 interactionSource = remember { androidx.compose.foundation.interaction.MutableInteractionSource() },
                                 indication = ripple(
                                     bounded = false,
@@ -963,12 +976,15 @@ fun ServerListScreen(viewModel: VpnViewModel) {
     val serversList by viewModel.servers.collectAsStateWithLifecycle()
     val selectedSrv by viewModel.selectedServer.collectAsStateWithLifecycle()
     val isPinging by viewModel.isPingingAll.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     var searchQuery by remember { mutableStateOf("") }
     var showAddDialog by remember { mutableStateOf(false) }
     var showQrScanner by remember { mutableStateOf(false) }
     var inputLink by remember { mutableStateOf("") }
     var isLinkValid by remember { mutableStateOf<Boolean?>(null) }
+    var showImportBackupDialog by remember { mutableStateOf(false) }
+    var backupText by remember { mutableStateOf("") }
 
     val filteredServers = serversList.filter {
         it.name.contains(searchQuery, ignoreCase = true) ||
@@ -1045,16 +1061,37 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                     letterSpacing = 1.sp
                 )
 
-                if (serversList.isNotEmpty()) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "Clear All",
-                        color = DangerRed,
+                        text = "Import",
+                        color = CyberPrimary,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier
-                            .clickable { viewModel.clearAllServers() }
-                            .testTag("clear_all_nodes")
+                        modifier = Modifier.clickable { showImportBackupDialog = true }
                     )
+                    if (serversList.isNotEmpty()) {
+                        Text(
+                            text = "Export",
+                            color = SecureGreen,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.clickable {
+                                val exported = viewModel.exportAllConfigsText()
+                                val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                                clipboard.setPrimaryClip(android.content.ClipData.newPlainText("Z2ray configs", exported))
+                                android.widget.Toast.makeText(context, "Configs copied to clipboard", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        )
+                        Text(
+                            text = "Clear All",
+                            color = DangerRed,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier
+                                .clickable { viewModel.clearAllServers() }
+                                .testTag("clear_all_nodes")
+                        )
+                    }
                 }
             }
 
@@ -1276,7 +1313,7 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                         }
 
                         Text(
-                            text = "Paste a vmess://, vless://, trojan:// or ss:// shareable configuration link below. z2ray will automatically parse and save the config parameters locally.",
+                            text = "Paste a vmess://, vless://, trojan:// or ss:// shareable configuration link below. Z2ray will automatically parse and save the config parameters locally.",
                             color = CyberTextSecondary,
                             fontSize = 12.sp,
                             modifier = Modifier.padding(bottom = 12.dp)
@@ -1353,7 +1390,42 @@ fun ServerListScreen(viewModel: VpnViewModel) {
             )
         }
 
-        if (showQrScanner) {
+        if (showImportBackupDialog) {
+        AlertDialog(
+            onDismissRequest = { showImportBackupDialog = false },
+            title = { Text("Import Config Backup", color = CyberTextPrimary) },
+            text = {
+                OutlinedTextField(
+                    value = backupText,
+                    onValueChange = { backupText = it },
+                    label = { Text("Paste vless/vmess/trojan/ss lines or base64 subscription") },
+                    minLines = 5,
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = CyberPrimary,
+                        unfocusedBorderColor = CyberCard,
+                        focusedTextColor = CyberTextPrimary,
+                        unfocusedTextColor = CyberTextPrimary
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    viewModel.importConfigsFromText(backupText) { count ->
+                        android.widget.Toast.makeText(context, "Imported $count configs", android.widget.Toast.LENGTH_SHORT).show()
+                    }
+                    backupText = ""
+                    showImportBackupDialog = false
+                }) { Text("Import", color = CyberPrimary) }
+            },
+            dismissButton = {
+                TextButton(onClick = { showImportBackupDialog = false }) { Text("Cancel", color = CyberTextSecondary) }
+            },
+            containerColor = CyberNavy
+        )
+    }
+
+    if (showQrScanner) {
             CameraQrScannerDialog(
                 onDismiss = { showQrScanner = false },
                 onQrScanned = { result ->
@@ -1375,6 +1447,9 @@ fun SecurityScreen(viewModel: VpnViewModel) {
     val settings by viewModel.securitySettings.collectAsStateWithLifecycle()
     val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val appTheme by viewModel.appTheme.collectAsStateWithLifecycle()
+    val coreVersion by viewModel.coreVersion.collectAsStateWithLifecycle()
+    val routingAssetsStatus by viewModel.routingAssetsStatus.collectAsStateWithLifecycle()
+    val isUpdatingRoutingAssets by viewModel.isUpdatingRoutingAssets.collectAsStateWithLifecycle()
 
     LazyColumn(
         modifier = Modifier
@@ -1396,6 +1471,51 @@ fun SecurityScreen(viewModel: VpnViewModel) {
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
+        }
+
+
+
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Memory, contentDescription = "Core", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "هسته و فایل‌های مسیریابی" else "Core & Routing Assets",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                    Text(coreVersion, color = CyberTextSecondary, fontSize = 11.sp)
+                    Text(routingAssetsStatus, color = CyberTextSecondary, fontSize = 11.sp)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { viewModel.refreshCoreAndAssetsStatus() },
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberCard),
+                            border = borderStroke(1.dp, CyberPrimary.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(10.dp)
+                        ) { Text(if (appLanguage == "fa") "بررسی" else "Check", color = CyberPrimary, fontSize = 12.sp) }
+                        Button(
+                            onClick = { viewModel.updateRoutingAssets() },
+                            enabled = !isUpdatingRoutingAssets,
+                            colors = ButtonDefaults.buttonColors(containerColor = CyberPrimary, contentColor = CyberBlack),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            if (isUpdatingRoutingAssets) {
+                                CircularProgressIndicator(color = CyberBlack, modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                            } else {
+                                Text(if (appLanguage == "fa") "آپدیت Geo" else "Update Geo", fontSize = 12.sp)
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         // Theme & Language Settings Card
@@ -2302,7 +2422,7 @@ fun SubscriptionScreen(viewModel: VpnViewModel) {
         }
     }
 
-    if (showQrScanner) {
+        if (showQrScanner) {
         CameraQrScannerDialog(
             onDismiss = { showQrScanner = false },
             onQrScanned = { result ->

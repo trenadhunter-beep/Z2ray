@@ -5,7 +5,7 @@ import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 
-@Database(entities = [VpnServer::class, Subscription::class, VpnLog::class], version = 1, exportSchema = false)
+@Database(entities = [VpnServer::class, Subscription::class, VpnLog::class], version = 2, exportSchema = false)
 abstract class VpnDatabase : RoomDatabase() {
     abstract fun vpnDao(): VpnDao
 

@@ -1,6 +1,0 @@
-{
-  "name": "z2ray.com",
-  "description": "Advanced secure V2ray/Vless VPN configuration manager and utility with stealth mode, fragment configurations, bypass routing, and active connection diagnostics.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

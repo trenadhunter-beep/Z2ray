@@ -19,3 +19,11 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+
+# Z2ray/Xray bridge reflection safety
+-keep class libv2ray.** { *; }
+-keep class go.** { *; }
+-keep class com.example.vpn.** { *; }
+-dontwarn libv2ray.**
+-dontwarn go.**

@@ -10,255 +10,233 @@ object VpnParser {
     fun parseLine(line: String, defaultGroup: String = "Imported"): VpnServer? {
         val trimmed = line.trim()
         if (trimmed.isEmpty()) return null
-        
+
         return try {
             when {
-                trimmed.startsWith("vless://") -> parseVless(trimmed, defaultGroup)
-                trimmed.startsWith("vmess://") -> parseVmess(trimmed, defaultGroup)
-                trimmed.startsWith("trojan://") -> parseTrojan(trimmed, defaultGroup)
-                trimmed.startsWith("ss://") -> parseShadowsocks(trimmed, defaultGroup)
+                trimmed.startsWith("vless://", ignoreCase = true) -> parseVless(trimmed, defaultGroup)
+                trimmed.startsWith("vmess://", ignoreCase = true) -> parseVmess(trimmed, defaultGroup)
+                trimmed.startsWith("trojan://", ignoreCase = true) -> parseTrojan(trimmed, defaultGroup)
+                trimmed.startsWith("ss://", ignoreCase = true) -> parseShadowsocks(trimmed, defaultGroup)
                 else -> null
             }
         } catch (e: Exception) {
-            e.printStackTrace()
             null
         }
     }
 
-    private fun decodeBase64Safe(input: String): String {
+    fun decodeBase64Safe(input: String): String {
         return try {
-            val cleaned = input.replace("-", "+").replace("_", "/").trim()
-            val padded = when (cleaned.length % 4) {
-                2 -> "$cleaned=="
-                3 -> "$cleaned="
-                else -> cleaned
-            }
+            val cleaned = input
+                .substringBefore("#")
+                .replace("-", "+")
+                .replace("_", "/")
+                .replace("\n", "")
+                .replace("\r", "")
+                .trim()
+            val padded = cleaned + "=".repeat((4 - cleaned.length % 4) % 4)
             val decodedBytes = Base64.decode(padded, Base64.DEFAULT)
             String(decodedBytes, Charset.forName("UTF-8"))
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }
 
-    private fun parseVless(link: String, groupName: String): VpnServer? {
-        // vless://uuid@host:port?param=val#description
-        val uriStr = link.substring(8)
-        val hashIndex = uriStr.indexOf('#')
-        val rawDesc = if (hashIndex != -1) uriStr.substring(hashIndex + 1) else "VLESS Server"
-        val desc = try { URLDecoder.decode(rawDesc, "UTF-8") } catch (e: Exception) { rawDesc }
-        
-        val mainPart = if (hashIndex != -1) uriStr.substring(0, hashIndex) else uriStr
-        val queryIndex = mainPart.indexOf('?')
-        val queryParams = if (queryIndex != -1) mainPart.substring(queryIndex + 1) else ""
-        
-        val credAndSocket = if (queryIndex != -1) mainPart.substring(0, queryIndex) else mainPart
-        val atIndex = credAndSocket.indexOf('@')
-        if (atIndex == -1) return null
-        
-        val uuid = credAndSocket.substring(0, atIndex)
-        val socketPart = credAndSocket.substring(atIndex + 1)
-        val colonIndex = socketPart.indexOf(':')
-        if (colonIndex == -1) return null
-        
-        val address = socketPart.substring(0, colonIndex)
-        val port = socketPart.substring(colonIndex + 1).toIntOrNull() ?: 443
-        
-        // Parse Query Parameters
-        var security = "none"
-        var path = ""
-        var host = ""
-        var netType = "tcp"
-        var sni = ""
-        
-        if (queryParams.isNotEmpty()) {
-            val pairs = queryParams.split("&")
-            for (pair in pairs) {
-                val parts = pair.split("=")
-                if (parts.size == 2) {
-                    val key = parts[0].lowercase()
-                    val value = try { URLDecoder.decode(parts[1], "UTF-8") } catch (e: Exception) { parts[1] }
-                    when (key) {
-                        "security" -> security = value
-                        "path" -> path = value
-                        "host" -> host = value
-                        "type" -> netType = value
-                        "sni" -> sni = value
-                    }
+    private fun decodeUrl(value: String): String = try {
+        URLDecoder.decode(value, "UTF-8")
+    } catch (_: Exception) {
+        value
+    }
+
+    private fun queryMap(query: String): Map<String, String> {
+        if (query.isBlank()) return emptyMap()
+        return query.split("&")
+            .mapNotNull { pair ->
+                val parts = pair.split("=", limit = 2)
+                if (parts.isEmpty() || parts[0].isBlank()) null else {
+                    parts[0].lowercase() to decodeUrl(parts.getOrElse(1) { "" })
                 }
             }
+            .toMap()
+    }
+
+    private fun splitHostPort(socketPart: String, defaultPort: Int): Pair<String, Int>? {
+        val cleaned = socketPart.trim()
+        if (cleaned.isBlank()) return null
+        return if (cleaned.startsWith("[")) {
+            val end = cleaned.indexOf(']')
+            if (end == -1) return null
+            val host = cleaned.substring(1, end)
+            val port = cleaned.substring(end + 1).removePrefix(":").toIntOrNull() ?: defaultPort
+            host to port
+        } else {
+            val colon = cleaned.lastIndexOf(':')
+            if (colon == -1) cleaned to defaultPort else {
+                val host = cleaned.substring(0, colon)
+                val port = cleaned.substring(colon + 1).toIntOrNull() ?: defaultPort
+                host to port
+            }
         }
-        
+    }
+
+    private fun parseVless(link: String, groupName: String): VpnServer? {
+        val uriStr = link.substringAfter("://")
+        val rawDesc = uriStr.substringAfter("#", "VLESS Server")
+        val desc = decodeUrl(rawDesc).ifBlank { "VLESS Server" }
+        val mainPart = uriStr.substringBefore("#")
+        val queryParams = mainPart.substringAfter("?", "")
+        val credAndSocket = mainPart.substringBefore("?")
+        val atIndex = credAndSocket.indexOf('@')
+        if (atIndex == -1) return null
+
+        val uuid = decodeUrl(credAndSocket.substring(0, atIndex))
+        val socket = splitHostPort(credAndSocket.substring(atIndex + 1), 443) ?: return null
+        val params = queryMap(queryParams)
+
+        val security = params["security"] ?: "none"
+        val host = params["host"] ?: ""
+        val sni = params["sni"] ?: params["servername"] ?: host
+        val flow = params["flow"] ?: ""
+        val publicKey = params["pbk"] ?: params["publickey"] ?: ""
+        val shortId = params["sid"] ?: params["shortid"] ?: ""
+        val fingerprint = params["fp"] ?: params["fingerprint"] ?: "chrome"
+        val spiderX = params["spx"] ?: params["spiderx"] ?: ""
+        val alpn = params["alpn"] ?: ""
+        val allowInsecure = params["allowinsecure"] == "1" || params["allowinsecure"]?.equals("true", true) == true
+
         return VpnServer(
             name = desc,
-            address = address,
-            port = port,
+            address = socket.first,
+            port = socket.second,
             uuid = uuid,
             protocol = "VLESS",
             security = security,
-            sni = if (sni.isNotEmpty()) sni else host,
-            path = path,
+            sni = sni,
+            path = params["path"] ?: params["serviceName".lowercase()] ?: "",
             host = host,
-            networkType = netType,
+            networkType = params["type"] ?: "tcp",
+            flow = flow,
+            publicKey = publicKey,
+            shortId = shortId,
+            fingerprint = fingerprint,
+            spiderX = spiderX,
+            alpn = alpn,
+            allowInsecure = allowInsecure,
             groupName = groupName,
             originalLink = link
         )
     }
 
     private fun parseVmess(link: String, groupName: String): VpnServer? {
-        // vmess://base64EncodedJson
-        val encodedPayload = link.substring(8)
+        val encodedPayload = link.substringAfter("://")
         val jsonStr = decodeBase64Safe(encodedPayload)
         if (jsonStr.isEmpty()) return null
-        
+
         val json = JSONObject(jsonStr)
         val ps = json.optString("ps", "VMess Server")
         val add = json.optString("add", "")
-        val port = json.optInt("port", 443)
+        val port = json.optString("port", "443").toIntOrNull() ?: json.optInt("port", 443)
         val id = json.optString("id", "")
         val net = json.optString("net", "tcp")
         val path = json.optString("path", "")
         val host = json.optString("host", "")
         val tls = json.optString("tls", "")
-        val sni = json.optString("sni", "")
-        
+        val sni = json.optString("sni", "").ifBlank { json.optString("serverName", "") }
+        val alpn = json.optString("alpn", "")
+        val fingerprint = json.optString("fp", "").ifBlank { json.optString("fingerprint", "chrome") }
+        val allowInsecure = json.optString("allowInsecure", "false").equals("true", true)
+
         if (add.isEmpty() || id.isEmpty()) return null
 
         return VpnServer(
-            name = ps,
+            name = ps.ifBlank { "VMess Server" },
             address = add,
             port = port,
             uuid = id,
             protocol = "VMESS",
-            security = if (tls == "tls") "tls" else "none",
-            sni = if (sni.isNotEmpty()) sni else host,
+            security = if (tls.equals("tls", true)) "tls" else "none",
+            sni = sni.ifBlank { host },
             path = path,
             host = host,
-            networkType = net,
+            networkType = net.ifBlank { "tcp" },
+            fingerprint = fingerprint,
+            alpn = alpn,
+            allowInsecure = allowInsecure,
             groupName = groupName,
             originalLink = link
         )
     }
 
     private fun parseTrojan(link: String, groupName: String): VpnServer? {
-        // trojan://password@host:port?param=val#description
-        val uriStr = link.substring(9)
-        val hashIndex = uriStr.indexOf('#')
-        val rawDesc = if (hashIndex != -1) uriStr.substring(hashIndex + 1) else "Trojan Server"
-        val desc = try { URLDecoder.decode(rawDesc, "UTF-8") } catch (e: Exception) { rawDesc }
-        
-        val mainPart = if (hashIndex != -1) uriStr.substring(0, hashIndex) else uriStr
-        val queryIndex = mainPart.indexOf('?')
-        val queryParams = if (queryIndex != -1) mainPart.substring(queryIndex + 1) else ""
-        
-        val credAndSocket = if (queryIndex != -1) mainPart.substring(0, queryIndex) else mainPart
+        val uriStr = link.substringAfter("://")
+        val rawDesc = uriStr.substringAfter("#", "Trojan Server")
+        val desc = decodeUrl(rawDesc).ifBlank { "Trojan Server" }
+        val mainPart = uriStr.substringBefore("#")
+        val queryParams = mainPart.substringAfter("?", "")
+        val credAndSocket = mainPart.substringBefore("?")
         val atIndex = credAndSocket.indexOf('@')
         if (atIndex == -1) return null
-        
-        val password = credAndSocket.substring(0, atIndex)
-        val socketPart = credAndSocket.substring(atIndex + 1)
-        val colonIndex = socketPart.indexOf(':')
-        if (colonIndex == -1) return null
-        
-        val address = socketPart.substring(0, colonIndex)
-        val port = socketPart.substring(colonIndex + 1).toIntOrNull() ?: 443
-        
-        var security = "tls"
-        var path = ""
-        var host = ""
-        var sni = ""
-        var netType = "tcp"
-        
-        if (queryParams.isNotEmpty()) {
-            val pairs = queryParams.split("&")
-            for (pair in pairs) {
-                val parts = pair.split("=")
-                if (parts.size == 2) {
-                    val key = parts[0].lowercase()
-                    val value = try { URLDecoder.decode(parts[1], "UTF-8") } catch (e: Exception) { parts[1] }
-                    when (key) {
-                        "security" -> security = value
-                        "path" -> path = value
-                        "host" -> host = value
-                        "sni" -> sni = value
-                        "type" -> netType = value
-                    }
-                }
-            }
-        }
-        
+
+        val password = decodeUrl(credAndSocket.substring(0, atIndex))
+        val socket = splitHostPort(credAndSocket.substring(atIndex + 1), 443) ?: return null
+        val params = queryMap(queryParams)
+        val host = params["host"] ?: ""
+        val sni = params["sni"] ?: params["peer"] ?: host
+        val fingerprint = params["fp"] ?: params["fingerprint"] ?: "chrome"
+        val alpn = params["alpn"] ?: ""
+        val allowInsecure = params["allowinsecure"] == "1" || params["allowinsecure"]?.equals("true", true) == true
+
         return VpnServer(
             name = desc,
-            address = address,
-            port = port,
+            address = socket.first,
+            port = socket.second,
             uuid = password,
             protocol = "TROJAN",
-            security = security,
-            sni = if (sni.isNotEmpty()) sni else host,
-            path = path,
+            security = params["security"] ?: "tls",
+            sni = sni,
+            path = params["path"] ?: "",
             host = host,
-            networkType = netType,
+            networkType = params["type"] ?: "tcp",
+            fingerprint = fingerprint,
+            alpn = alpn,
+            allowInsecure = allowInsecure,
             groupName = groupName,
             originalLink = link
         )
     }
 
     private fun parseShadowsocks(link: String, groupName: String): VpnServer? {
-        // ss://base64_of_method_password@host:port#description
-        val uriStr = link.substring(5)
-        val hashIndex = uriStr.indexOf('#')
-        val rawDesc = if (hashIndex != -1) uriStr.substring(hashIndex + 1) else "SS Server"
-        val desc = try { URLDecoder.decode(rawDesc, "UTF-8") } catch (e: Exception) { rawDesc }
-        
-        val mainPart = if (hashIndex != -1) uriStr.substring(0, hashIndex) else uriStr
-        
-        // Let's check for standard ss format: ss://base64(method:password@host:port) or ss://base64(method:password)@host:port
-        val atIndex = mainPart.indexOf('@')
-        if (atIndex != -1) {
-            val base64Part = mainPart.substring(0, atIndex)
-            val socketPart = mainPart.substring(atIndex + 1)
-            val colonIndex = socketPart.indexOf(':')
-            if (colonIndex == -1) return null
-            
-            val address = socketPart.substring(0, colonIndex)
-            val port = socketPart.substring(colonIndex + 1).toIntOrNull() ?: 8388
-            val decodedCreds = decodeBase64Safe(base64Part)
-            
-            return VpnServer(
-                name = desc,
-                address = address,
-                port = port,
-                uuid = decodedCreds, // stores method:password
-                protocol = "SHADOWSOCKS",
-                security = "none",
-                groupName = groupName,
-                originalLink = link
-            )
+        val uriStr = link.substringAfter("://")
+        val rawDesc = uriStr.substringAfter("#", "Shadowsocks Server")
+        val desc = decodeUrl(rawDesc).ifBlank { "Shadowsocks Server" }
+        val mainPart = uriStr.substringBefore("#").substringBefore("?")
+
+        val decoded = if (mainPart.contains('@')) {
+            val encodedMethodPass = mainPart.substringBefore('@')
+            val methodPass = decodeBase64Safe(encodedMethodPass).ifBlank { decodeUrl(encodedMethodPass) }
+            val socketPart = mainPart.substringAfter('@')
+            "$methodPass@$socketPart"
         } else {
-            // Whole thing base64 encoded
-            val decodedFull = decodeBase64Safe(mainPart)
-            if (decodedFull.isEmpty()) return null
-            // Form: method:password@host:port
-            val innerAt = decodedFull.indexOf('@')
-            if (innerAt == -1) return null
-            
-            val methodPass = decodedFull.substring(0, innerAt)
-            val socketPart = decodedFull.substring(innerAt + 1)
-            val colonIndex = socketPart.indexOf(':')
-            if (colonIndex == -1) return null
-            
-            val address = socketPart.substring(0, colonIndex)
-            val port = socketPart.substring(colonIndex + 1).toIntOrNull() ?: 8388
-            
-            return VpnServer(
-                name = desc,
-                address = address,
-                port = port,
-                uuid = methodPass,
-                protocol = "SHADOWSOCKS",
-                security = "none",
-                groupName = groupName,
-                originalLink = link
-            )
+            decodeBase64Safe(mainPart)
         }
+
+        val atIndex = decoded.indexOf('@')
+        if (atIndex == -1) return null
+        val methodPass = decoded.substring(0, atIndex)
+        val method = methodPass.substringBefore(':', "")
+        val password = methodPass.substringAfter(':', "")
+        if (method.isBlank() || password.isBlank()) return null
+
+        val socket = splitHostPort(decoded.substring(atIndex + 1), 8388) ?: return null
+
+        return VpnServer(
+            name = desc,
+            address = socket.first,
+            port = socket.second,
+            uuid = password,
+            protocol = "SHADOWSOCKS",
+            security = method,
+            groupName = groupName,
+            originalLink = link
+        )
     }
 }

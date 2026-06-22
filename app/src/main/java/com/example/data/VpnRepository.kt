@@ -1,6 +1,5 @@
 package com.example.data
 
-import android.util.Base64
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.withContext
@@ -62,7 +61,7 @@ class VpnRepository(private val vpnDao: VpnDao, private val context: android.con
     suspend fun fetchSubscription(sub: Subscription) = withContext(Dispatchers.IO) {
         log("SUBSCRIPTION", "INFO", "Fetching subscription: ${sub.name}...")
         try {
-            val request = Request.Builder().url(sub.url).header("User-Agent", "z2ray/1.0").build()
+            val request = Request.Builder().url(sub.url).header("User-Agent", "Z2ray/1.0").build()
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     log("SUBSCRIPTION", "ERROR", "Failed to fetch ${sub.name}. HTTP code: ${response.code}")
@@ -75,25 +74,18 @@ class VpnRepository(private val vpnDao: VpnDao, private val context: android.con
                     return@withContext
                 }
 
-                // Subscriptions are usually base64 encoded strings of multiple lines.
-                val decoded = VpnParser.parseLine(payload) // Some subscriptions might not be base64, check first line or full decode
-                val linesStr = try {
-                    val rawDecoded = Base64.decode(payload.trim(), Base64.DEFAULT)
-                    String(rawDecoded, Charsets.UTF_8)
-                } catch (e: Exception) {
-                    // Try parsing as raw lines
-                    payload
-                }
+                val decodedPayload = VpnParser.decodeBase64Safe(payload)
+                val linesStr = if (decodedPayload.contains("://")) decodedPayload else payload
 
-                val lines = linesStr.split("\n", "\r").map { it.trim() }.filter { it.isNotEmpty() }
-                val parsedServers = mutableListOf<VpnServer>()
+                val lines = linesStr
+                    .replace("\r", "\n")
+                    .split("\n")
+                    .map { it.trim() }
+                    .filter { it.isNotEmpty() && !it.startsWith("#") }
 
-                for (line in lines) {
-                    val parsed = VpnParser.parseLine(line, sub.name)
-                    if (parsed != null) {
-                        parsedServers.add(parsed.copy(isCustom = false))
-                    }
-                }
+                val parsedServers = lines
+                    .mapNotNull { line -> VpnParser.parseLine(line, sub.name)?.copy(isCustom = false) }
+                    .distinctBy { it.originalLink.ifBlank { "${it.protocol}-${it.address}-${it.port}-${it.uuid}" } }
 
                 if (parsedServers.isNotEmpty()) {
                     // Clear previous configs from this subscription
@@ -117,20 +109,21 @@ class VpnRepository(private val vpnDao: VpnDao, private val context: android.con
     }
 
     suspend fun testServerLatency(server: VpnServer): Int = withContext(Dispatchers.IO) {
-        val startTime = System.currentTimeMillis()
-        try {
-            val socket = Socket()
-            val socketAddress = InetSocketAddress(server.address, server.port)
-            socket.connect(socketAddress, 2500) // 2.5s connection timeout
-            socket.close()
-            val endTime = System.currentTimeMillis()
-            val duration = (endTime - startTime).toInt()
-            vpnDao.updateServerLatency(server.id, duration)
-            duration
-        } catch (e: Exception) {
-            vpnDao.updateServerLatency(server.id, -1)
-            -1
-        }
+        val best = (1..2).map { attempt ->
+            val startTime = System.currentTimeMillis()
+            try {
+                Socket().use { socket ->
+                    socket.tcpNoDelay = true
+                    socket.connect(InetSocketAddress(server.address, server.port), if (attempt == 1) 1800 else 2500)
+                }
+                (System.currentTimeMillis() - startTime).toInt()
+            } catch (_: Exception) {
+                -1
+            }
+        }.filter { it > 0 }.minOrNull() ?: -1
+
+        vpnDao.updateServerLatency(server.id, best)
+        best
     }
 
     suspend fun log(tag: String, level: String, message: String) {

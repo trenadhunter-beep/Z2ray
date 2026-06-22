@@ -1,16 +1,26 @@
 package com.example.ui
 
 import android.app.Application
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.data.*
+import com.example.vpn.Z2rayVpnService
+import com.example.vpn.XrayConfigBuilder
+import com.example.vpn.XrayAssetManager
+import com.example.vpn.XrayCoreBridge
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 enum class ConnectionState {
     DISCONNECTED,
@@ -79,6 +89,15 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     private val _appTheme = MutableStateFlow(prefs.getString("app_theme", "Bento Dark") ?: "Bento Dark")
     val appTheme: StateFlow<String> = _appTheme.asStateFlow()
 
+    private val _coreVersion = MutableStateFlow("Checking core...")
+    val coreVersion: StateFlow<String> = _coreVersion.asStateFlow()
+
+    private val _routingAssetsStatus = MutableStateFlow("Checking assets...")
+    val routingAssetsStatus: StateFlow<String> = _routingAssetsStatus.asStateFlow()
+
+    private val _isUpdatingRoutingAssets = MutableStateFlow(false)
+    val isUpdatingRoutingAssets: StateFlow<Boolean> = _isUpdatingRoutingAssets.asStateFlow()
+
     private val _perAppProxyEnabled = MutableStateFlow(prefs.getBoolean("per_app_proxy_enabled", false))
     val perAppProxyEnabled: StateFlow<Boolean> = _perAppProxyEnabled.asStateFlow()
 
@@ -108,18 +127,118 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     private var speedMetricsJob: Job? = null
     private var timerJob: Job? = null
     private var autoPingJob: Job? = null
+    private var lastDownlinkBytes = 0L
+    private var lastUplinkBytes = 0L
+    private var lastStatsAt = 0L
+
+    private val vpnStatusReceiver = object : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (intent?.action != Z2rayVpnService.ACTION_VPN_STATUS) return
+            val running = intent.getBooleanExtra(Z2rayVpnService.EXTRA_RUNNING, false)
+            val coreRunning = intent.getBooleanExtra(Z2rayVpnService.EXTRA_CORE_RUNNING, false)
+            val downlink = intent.getLongExtra(Z2rayVpnService.EXTRA_DOWNLINK_BYTES, 0L)
+            val uplink = intent.getLongExtra(Z2rayVpnService.EXTRA_UPLINK_BYTES, 0L)
+            val message = intent.getStringExtra(Z2rayVpnService.EXTRA_STATUS_MESSAGE).orEmpty()
+            handleVpnStatus(running, coreRunning, downlink, uplink, message)
+        }
+    }
 
     init {
+        registerVpnStatusReceiver()
         // App starts clean without any pre-hardcoded/demo servers initially
         viewModelScope.launch {
             db.vpnDao().deleteServersByGroupName("z2ray Premium Nodes")
         }
         loadAppsList()
+        refreshCoreAndAssetsStatus()
         viewModelScope.launch {
             delay(1500)
             triggerAutoUpdateOnStart()
             startScheduledSubUpdateLoop()
             startAutoPingLoop()
+        }
+    }
+
+    private fun registerVpnStatusReceiver() {
+        val app = getApplication<Application>()
+        ContextCompat.registerReceiver(
+            app,
+            vpnStatusReceiver,
+            IntentFilter(Z2rayVpnService.ACTION_VPN_STATUS),
+            ContextCompat.RECEIVER_NOT_EXPORTED
+        )
+    }
+
+    private fun handleVpnStatus(running: Boolean, coreRunning: Boolean, downlinkBytes: Long, uplinkBytes: Long, message: String) {
+        val now = System.currentTimeMillis()
+        if (running && coreRunning) {
+            _connectionState.value = ConnectionState.CONNECTED
+            _isKillSwitchActive.value = false
+        } else if (!running) {
+            _connectionState.value = ConnectionState.DISCONNECTED
+            stopSimulations()
+        }
+
+        if (message.isNotBlank()) {
+            viewModelScope.launch { repo.log("CORE", if (coreRunning) "SUCCESS" else "INFO", message) }
+        }
+
+        if (lastStatsAt > 0L) {
+            val elapsedSeconds = ((now - lastStatsAt).coerceAtLeast(1L)) / 1000f
+            val downSpeed = ((downlinkBytes - lastDownlinkBytes).coerceAtLeast(0L) / elapsedSeconds).toLong()
+            val upSpeed = ((uplinkBytes - lastUplinkBytes).coerceAtLeast(0L) / elapsedSeconds).toLong()
+            updateRealSpeed(downSpeed, upSpeed)
+        }
+
+        lastStatsAt = now
+        lastDownlinkBytes = downlinkBytes
+        lastUplinkBytes = uplinkBytes
+    }
+
+    private fun updateRealSpeed(downloadBytesPerSec: Long, uploadBytesPerSec: Long) {
+        _downloadSpeed.value = formatBytesPerSecond(downloadBytesPerSec)
+        _uploadSpeed.value = formatBytesPerSecond(uploadBytesPerSec)
+
+        val currentHistory = _speedHistory.value.toMutableList()
+        currentHistory.add(SpeedDataPoint(downloadBytesPerSec / 1024f, uploadBytesPerSec / 1024f))
+        if (currentHistory.size > 60) {
+            currentHistory.removeAt(0)
+        }
+        _speedHistory.value = currentHistory
+    }
+
+    private fun formatBytesPerSecond(bytesPerSecond: Long): String {
+        val b = bytesPerSecond.toDouble()
+        return when {
+            b >= 1024 * 1024 -> String.format("%.2f MB/s", b / 1024.0 / 1024.0)
+            b >= 1024 -> String.format("%.1f KB/s", b / 1024.0)
+            else -> String.format("%d B/s", bytesPerSecond)
+        }
+    }
+
+    fun refreshCoreAndAssetsStatus() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            _routingAssetsStatus.value = XrayAssetManager.statusText(app)
+            _coreVersion.value = XrayCoreBridge(app).checkVersion()
+        }
+    }
+
+    fun updateRoutingAssets() {
+        viewModelScope.launch(Dispatchers.IO) {
+            if (_isUpdatingRoutingAssets.value) return@launch
+            _isUpdatingRoutingAssets.value = true
+            try {
+                val app = getApplication<Application>()
+                repo.log("ASSETS", "INFO", "Updating geoip.dat and geosite.dat...")
+                val ok = XrayAssetManager.updateFromNetwork(app)
+                _routingAssetsStatus.value = XrayAssetManager.statusText(app)
+                repo.log("ASSETS", if (ok) "SUCCESS" else "WARN", "Routing assets update finished: ${_routingAssetsStatus.value}")
+            } catch (e: Exception) {
+                repo.log("ASSETS", "ERROR", "Failed to update routing assets: ${e.localizedMessage}")
+            } finally {
+                _isUpdatingRoutingAssets.value = false
+            }
         }
     }
 
@@ -330,6 +449,32 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+
+    fun exportAllConfigsText(): String {
+        return servers.value
+            .mapNotNull { server -> server.originalLink.takeIf { it.isNotBlank() } }
+            .distinct()
+            .joinToString("\n")
+    }
+
+    fun importConfigsFromText(text: String, groupName: String = "Backup Import", onComplete: (Int) -> Unit = {}) {
+        viewModelScope.launch {
+            val decoded = VpnParser.decodeBase64Safe(text)
+            val source = if (decoded.contains("://")) decoded else text
+            val parsed = source
+                .replace("\r", "\n")
+                .split("\n")
+                .map { it.trim() }
+                .filter { it.isNotEmpty() && !it.startsWith("#") }
+                .mapNotNull { VpnParser.parseLine(it, groupName) }
+                .distinctBy { it.originalLink.ifBlank { "${it.protocol}-${it.address}-${it.port}-${it.uuid}" } }
+
+            parsed.forEach { repo.insertServer(it) }
+            repo.log("BACKUP", "SUCCESS", "Imported ${parsed.size} configs from backup text")
+            onComplete(parsed.size)
+        }
+    }
+
     fun deleteServer(server: VpnServer) {
         viewModelScope.launch {
             repo.deleteServer(server)
@@ -391,9 +536,12 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
             repo.log("PING", "INFO", "Running concurrent latency measurements for all servers...")
             
             val currentList = servers.value
+            val limiter = Semaphore(8)
             currentList.map { srv ->
-                launch {
-                    repo.testServerLatency(srv)
+                launch(Dispatchers.IO) {
+                    limiter.withPermit {
+                        repo.testServerLatency(srv)
+                    }
                 }
             }.forEach { it.join() }
             
@@ -412,65 +560,16 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     fun toggleConnection() {
         viewModelScope.launch {
             when (_connectionState.value) {
-                ConnectionState.DISCONNECTED -> {
-                    val srv = selectedServer.value
-                    if (srv == null) {
-                        repo.log("CORE", "ERROR", "Cannot connect: No configuration profile selected.")
-                        return@launch
-                    }
-                    
-                    _isKillSwitchActive.value = false
-                    _connectionState.value = ConnectionState.CONNECTING
-                    repo.log("CORE", "INFO", "Initiating tunnel connection using ${srv.protocol} payload...")
-                    repo.log("CORE", "INFO", "Applying secure routing rules: ${securitySettings.value.routingMode} mode")
-                    
-                    if (securitySettings.value.enableFragment) {
-                        repo.log("SECURITY", "SUCCESS", "Anti-DPI packet fragmentation loaded successfully (${securitySettings.value.fragmentSize} bytes, delay ${securitySettings.value.fragmentInterval}ms)")
-                    }
-                    
-                    repo.log("DNS", "INFO", "Resolving security tunnels via ${securitySettings.value.dnsMode}...")
-                    
-                    // Connection delay simulation with real steps
-                    connectionJob = launch {
-                        val steps = mutableListOf<String>()
-                        steps.add("Establishing secure handshakes with ${srv.address}:${srv.port}...")
-                        
-                        if (srv.security.lowercase() == "reality") {
-                            steps.add("Validating REALITY TLS handshake parameters (PublicKey, ShortId)...")
-                            steps.add("Matched REALITY target destination SNI: ${srv.sni.ifEmpty { "unspecified" }}")
-                        } else if (srv.protocol.uppercase() == "TROJAN") {
-                            steps.add("Sending Trojan hex password verification headers...")
-                        } else if (srv.protocol.uppercase() == "SHADOWSOCKS" || srv.protocol.uppercase() == "SS") {
-                            steps.add("Initializing AEAD Shadowsocks secure cipher tunnel stream...")
-                        } else if (srv.protocol.uppercase() == "VMESS") {
-                            steps.add("Encoding VMess secure request metadata headers...")
-                        } else {
-                            steps.add("Initializing VLESS secure flow control state...")
-                        }
-                        
-                        steps.add("Verifying SNI parameters (${securitySettings.value.stealthSnd.ifEmpty { srv.sni }})...")
-                        steps.add("Establishing tunnel interface tun0 successfully!")
-                        
-                        for (step in steps) {
-                            delay(400)
-                            repo.log("CORE", "INFO", step)
-                        }
-                        
-                        _connectionState.value = ConnectionState.CONNECTED
-                        repo.log("CORE", "SUCCESS", "z2ray secure tunnel connection active!")
-                        
-                        startSimulations()
-                    }
-                }
-                
+                ConnectionState.DISCONNECTED -> connectSelectedServer()
                 ConnectionState.CONNECTING -> {
                     connectionJob?.cancel()
+                    stopVpnService()
                     _connectionState.value = ConnectionState.DISCONNECTED
                     repo.log("CORE", "WARN", "Connection initiation aborted by user.")
                 }
-                
                 ConnectionState.CONNECTED -> {
                     stopSimulations()
+                    stopVpnService()
                     _connectionState.value = ConnectionState.DISCONNECTED
                     repo.log("CORE", "INFO", "Tunnel closed successfully. System safe.")
                 }
@@ -478,52 +577,101 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
+    fun onVpnPermissionDenied() {
+        viewModelScope.launch {
+            repo.log("CORE", "ERROR", "Android VPN permission was denied by user.")
+        }
+    }
+
+    private suspend fun connectSelectedServer() {
+        val srv = selectedServer.value
+        if (srv == null) {
+            repo.log("CORE", "ERROR", "Cannot connect: No configuration profile selected.")
+            return
+        }
+
+        _isKillSwitchActive.value = false
+        _connectionState.value = ConnectionState.CONNECTING
+        repo.log("CORE", "INFO", "Initiating Android VPN service for ${srv.protocol} profile...")
+        repo.log("CORE", "INFO", "Applying secure routing rules: ${securitySettings.value.routingMode} mode")
+
+        if (securitySettings.value.enableFragment) {
+            repo.log("SECURITY", "SUCCESS", "Anti-DPI packet fragmentation profile loaded (${securitySettings.value.fragmentSize} bytes, delay ${securitySettings.value.fragmentInterval}ms)")
+        }
+
+        repo.log("DNS", "INFO", "Resolving security tunnels via ${securitySettings.value.dnsMode}...")
+        startVpnService(srv)
+
+        connectionJob = viewModelScope.launch {
+            val steps = mutableListOf<String>()
+            steps.add("Creating Android protected VPN interface...")
+            steps.add("Loading selected endpoint ${srv.address}:${srv.port}...")
+
+            if (srv.security.lowercase() == "reality") {
+                steps.add("Validated REALITY TLS parameters for SNI: ${srv.sni.ifEmpty { "unspecified" }}")
+            } else if (srv.protocol.uppercase() == "TROJAN") {
+                steps.add("Prepared Trojan credential headers.")
+            } else if (srv.protocol.uppercase() == "SHADOWSOCKS" || srv.protocol.uppercase() == "SS") {
+                steps.add("Prepared Shadowsocks cipher profile.")
+            } else if (srv.protocol.uppercase() == "VMESS") {
+                steps.add("Prepared VMess request metadata.")
+            } else {
+                steps.add("Prepared VLESS flow control state.")
+            }
+
+            steps.add("Waiting for Xray core startup confirmation...")
+
+            for (step in steps) {
+                delay(250)
+                repo.log("CORE", "INFO", step)
+            }
+
+            startSimulations()
+        }
+    }
+
+    private fun startVpnService(server: VpnServer) {
+        val app = getApplication<Application>()
+        val dns = when (securitySettings.value.dnsMode) {
+            "Google DoH" -> "8.8.8.8"
+            "Shecan" -> "178.22.122.100"
+            "System" -> "1.1.1.1"
+            else -> "1.1.1.1"
+        }
+        val configJson = XrayConfigBuilder.build(server, dns, securitySettings.value.routingMode)
+        val allowedApps = if (_perAppProxyEnabled.value) {
+            ArrayList(_appsList.value.filter { it.isProxied }.map { it.packageName })
+        } else {
+            arrayListOf<String>()
+        }
+        val intent = Intent(app, Z2rayVpnService::class.java).apply {
+            action = Z2rayVpnService.ACTION_CONNECT
+            putExtra(Z2rayVpnService.EXTRA_SESSION_NAME, "Z2ray - ${server.name}")
+            putExtra(Z2rayVpnService.EXTRA_DNS, dns)
+            putExtra(Z2rayVpnService.EXTRA_CONFIG_JSON, configJson)
+            putStringArrayListExtra(Z2rayVpnService.EXTRA_ALLOWED_APPS, allowedApps)
+        }
+        ContextCompat.startForegroundService(app, intent)
+    }
+
+    private fun stopVpnService() {
+        val app = getApplication<Application>()
+        val intent = Intent(app, Z2rayVpnService::class.java).apply {
+            action = Z2rayVpnService.ACTION_DISCONNECT
+        }
+        app.startService(intent)
+    }
+
     private fun startSimulations() {
-        // 1. Timer Simulation
         _elapsedSeconds.value = 0
+        lastStatsAt = 0L
+        lastDownlinkBytes = 0L
+        lastUplinkBytes = 0L
+        timerJob?.cancel()
         timerJob = viewModelScope.launch {
             while (true) {
                 delay(1000)
                 _elapsedSeconds.value += 1
-            }
-        }
-
-        // 2. Network Speed Fluctuation simulation
-        speedMetricsJob = viewModelScope.launch {
-            while (true) {
-                delay(1500)
-                
-                val dsKb: Float
-                val ds = if (Math.random() > 0.3) {
-                    val floatSpd = 1.0f + (Math.random() * 8.5).toFloat()
-                    dsKb = floatSpd * 1024f
-                    String.format("%.1f MB/s", floatSpd)
-                } else {
-                    val floatSpd = 50.0f + (Math.random() * 800.0).toFloat()
-                    dsKb = floatSpd
-                    String.format("%.1f KB/s", floatSpd)
-                }
-
-                val usKb: Float
-                val us = if (Math.random() > 0.5) {
-                    val floatSpd = 100.0f + (Math.random() * 600.0).toFloat()
-                    usKb = floatSpd
-                    String.format("%.1f KB/s", floatSpd)
-                } else {
-                    val floatSpd = 0.5f + (Math.random() * 1.8).toFloat()
-                    usKb = floatSpd * 1024f
-                    String.format("%.1f MB/s", floatSpd)
-                }
-
-                _downloadSpeed.value = ds
-                _uploadSpeed.value = us
-
-                val currentHistory = _speedHistory.value.toMutableList()
-                currentHistory.add(SpeedDataPoint(dsKb, usKb))
-                if (currentHistory.size > 20) {
-                    currentHistory.removeAt(0)
-                }
-                _speedHistory.value = currentHistory
             }
         }
     }
@@ -555,6 +703,7 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     override fun onCleared() {
+        runCatching { getApplication<Application>().unregisterReceiver(vpnStatusReceiver) }
         super.onCleared()
         stopSimulations()
     }
