@@ -92,7 +92,7 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
                 title = {
                     Column {
                         Text(
-                            "z2ray.com",
+                            "Z2ray",
                             color = CyberTextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 20.sp,
