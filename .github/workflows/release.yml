@@ -1,0 +1,97 @@
+name: Android Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, example v1.0.0'
+        required: false
+        type: string
+
+jobs:
+  release:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+          cache-disabled: true
+
+      - name: Create empty local secrets env
+        run: |
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            echo "API_KEY=" > .env
+          fi
+
+      - name: Download Xray core AAR
+        run: |
+          mkdir -p app/libs
+          curl -L --retry 3 --fail -o app/libs/libv2ray.aar https://github.com/2dust/AndroidLibXrayLite/releases/latest/download/libv2ray.aar
+
+      - name: Download Xray routing assets
+        run: |
+          mkdir -p app/src/main/assets
+          curl -L --retry 3 --fail -o app/src/main/assets/geoip.dat https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip.dat
+          curl -L --retry 3 --fail -o app/src/main/assets/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+
+      - name: Decode release keystore
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        run: |
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > release-keystore.jks
+
+      - name: Build signed release APK
+        if: ${{ secrets.KEYSTORE_BASE64 != '' }}
+        env:
+          KEYSTORE_PATH: ${{ github.workspace }}/release-keystore.jks
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: gradle --stacktrace assembleRelease
+
+      - name: Build debug fallback APK
+        if: ${{ secrets.KEYSTORE_BASE64 == '' }}
+        run: gradle --stacktrace assembleDebug
+
+      - name: Collect APK
+        run: |
+          mkdir -p release
+          APK=$(find app/build/outputs/apk -type f -name "*.apk" | head -n 1)
+          test -n "$APK"
+          cp "$APK" release/z2ray.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: z2ray
+          path: release/z2ray.apk
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        if: ${{ github.event.inputs.tag != '' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          prerelease: false
+          files: release/z2ray.apk
