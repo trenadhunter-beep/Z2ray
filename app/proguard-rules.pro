@@ -24,6 +24,6 @@
 # Z2ray/Xray bridge reflection safety
 -keep class libv2ray.** { *; }
 -keep class go.** { *; }
--keep class com.example.vpn.** { *; }
+-keep class com.z2ray.android.vpn.** { *; }
 -dontwarn libv2ray.**
 -dontwarn go.**

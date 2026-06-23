@@ -6,11 +6,22 @@ on:
   pull_request:
     branches: [ "main", "master" ]
   workflow_dispatch:
+    inputs:
+      core:
+        description: 'Bundled core flavor'
+        required: false
+        default: 'xray'
+        type: choice
+        options:
+          - xray
+          - v2fly
 
 jobs:
   build:
     name: Build App
     runs-on: ubuntu-latest
+    env:
+      CORE_FLAVOR: ${{ github.event.inputs.core || 'xray' }}
 
     steps:
       - name: Checkout Code
@@ -44,28 +55,29 @@ jobs:
             echo "API_KEY=" > .env
           fi
 
-      - name: Download Xray core AAR
+      - name: Download Android core AAR
         run: |
           mkdir -p app/libs
-          curl -L --retry 3 --fail -o app/libs/libv2ray.aar https://github.com/2dust/AndroidLibXrayLite/releases/latest/download/libv2ray.aar
-
-      - name: Download Xray routing assets
-        run: |
-          mkdir -p app/src/main/assets
-          curl -L --retry 3 --fail -o app/src/main/assets/geoip.dat https://github.com/Loyalsoldier/geoip/releases/latest/download/geoip.dat
-          curl -L --retry 3 --fail -o app/src/main/assets/geosite.dat https://github.com/Loyalsoldier/v2ray-rules-dat/releases/latest/download/geosite.dat
+          if [ "$CORE_FLAVOR" = "v2fly" ]; then
+            CORE_URL="https://github.com/2dust/AndroidLibV2rayLite/releases/latest/download/libv2ray.aar"
+          else
+            CORE_URL="https://github.com/2dust/AndroidLibXrayLite/releases/latest/download/libv2ray.aar"
+          fi
+          echo "Using core flavor: $CORE_FLAVOR"
+          curl -L --retry 3 --fail -o app/libs/libv2ray.aar "$CORE_URL"
 
       - name: Build debug APK
-        run: gradle --stacktrace assembleDebug
+        run: gradle --stacktrace -PCORE_FLAVOR=$CORE_FLAVOR assembleDebug
 
-      - name: Rename APK to z2ray.apk
+      - name: Collect APKs
         run: |
           mkdir -p release
-          cp app/build/outputs/apk/debug/*.apk release/z2ray.apk
+          find app/build/outputs/apk/debug -type f -name "*.apk" -exec cp {} release/ \;
+          ls -lh release
 
-      - name: Upload z2ray APK
+      - name: Upload z2ray APKs
         uses: actions/upload-artifact@v4
         with:
-          name: z2ray
-          path: release/z2ray.apk
+          name: z2ray-${{ env.CORE_FLAVOR }}
+          path: release/*.apk
           if-no-files-found: error

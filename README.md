@@ -19,6 +19,8 @@ A modern Android Xray/V2Ray client for importing, managing, testing, and running
 
 **Z2ray** is an Android client built with **Kotlin**, **Jetpack Compose**, Android **VpnService**, and **Xray Core**.
 
+> Note: V2Fly/V2Ray share links are import-compatible. The default bundled runtime is Xray (`AndroidLibXrayLite`), and CI/release workflows can also build a v2fly-flavored APK with `AndroidLibV2rayLite` using `CORE_FLAVOR=v2fly`.
+
 It supports importing V2Ray-compatible links, managing subscriptions, measuring latency, running a real Android VPN tunnel, and displaying live traffic statistics.
 
 ---
@@ -31,12 +33,17 @@ It supports importing V2Ray-compatible links, managing subscriptions, measuring 
 - Reality advanced fields support
 - TUN-based full-device routing
 - Real traffic speed from Xray stats
-- VLESS, VMess, Trojan, and Shadowsocks parser
+- Extended parser for VLESS, VMess, Trojan, Shadowsocks, Hysteria2, SOCKS, SIP008 JSON, raw Xray JSON, and basic Clash/Mihomo YAML
+- Extended transport generation for WS, gRPC, HTTP/2, HTTPUpgrade, XHTTP/SplitHTTP, mKCP, QUIC, and Hysteria2
 - Subscription import and refresh
 - Import/export configs backup
 - QR scanner support
 - Per-app proxy support
 - Bypass Iran / Direct / Global routing modes
+- Custom DOMAIN/IP/PROTOCOL/NETWORK routing rules with import/export
+- URL connectivity test, download speed test, TCP latency, and TLS handshake diagnostics
+- GeoIP/GeoSite status with SHA-256 verification details and fallback handling
+- Signed release workflow with APK/source/core/assets checksums
 - API 23+ / Android 6.0+ support
 - Multi-language UI with Persian RTL support
 - GitHub Actions APK build
@@ -45,12 +52,16 @@ It supports importing V2Ray-compatible links, managing subscriptions, measuring 
 
 ## Supported Config Formats
 
-| Protocol | Link |
+| Protocol / Format | Input |
 | --- | --- |
 | VLESS | `vless://` |
 | VMess | `vmess://` |
 | Trojan | `trojan://` |
-| Shadowsocks | `ss://` |
+| Shadowsocks | `ss://` and SIP008 JSON |
+| Hysteria2 | `hy2://`, `hysteria2://` |
+| SOCKS/SOCKS5 | `socks://`, `socks5://` |
+| Raw Xray config | JSON with `inbounds` / `outbounds` |
+| Clash/Mihomo | Basic `proxies:` YAML parsing |
 
 ---
 
