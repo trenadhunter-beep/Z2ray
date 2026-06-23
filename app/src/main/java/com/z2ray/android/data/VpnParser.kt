@@ -14,15 +14,36 @@ object VpnParser {
         if (trimmed.isEmpty()) return null
 
         return try {
+            val lower = trimmed.lowercase(Locale.US)
+            val startIndex = when {
+                trimmed.startsWith("{") -> 0
+                lower.contains("vless://") -> trimmed.indexOf("vless://", ignoreCase = true)
+                lower.contains("vmess://") -> trimmed.indexOf("vmess://", ignoreCase = true)
+                lower.contains("trojan://") -> trimmed.indexOf("trojan://", ignoreCase = true)
+                lower.contains("ss://") -> trimmed.indexOf("ss://", ignoreCase = true)
+                lower.contains("hysteria2://") -> trimmed.indexOf("hysteria2://", ignoreCase = true)
+                lower.contains("hy2://") -> trimmed.indexOf("hy2://", ignoreCase = true)
+                lower.contains("tuic://") -> trimmed.indexOf("tuic://", ignoreCase = true)
+                lower.contains("socks://") -> trimmed.indexOf("socks://", ignoreCase = true)
+                lower.contains("socks5://") -> trimmed.indexOf("socks5://", ignoreCase = true)
+                else -> -1
+            }
+
+            if (startIndex == -1) return null
+            val configPart = trimmed.substring(startIndex)
+
+            // Extract only the link (until first space, tab, newline, or quote)
+            val cleanConfig = configPart.split(Regex("[\\s\"']")).first()
+
             when {
-                trimmed.startsWith("{", ignoreCase = false) -> parseRawJsonConfig(trimmed, defaultGroup)
-                trimmed.startsWith("vless://", ignoreCase = true) -> parseVless(trimmed, defaultGroup)
-                trimmed.startsWith("vmess://", ignoreCase = true) -> parseVmess(trimmed, defaultGroup)
-                trimmed.startsWith("trojan://", ignoreCase = true) -> parseTrojan(trimmed, defaultGroup)
-                trimmed.startsWith("ss://", ignoreCase = true) -> parseShadowsocks(trimmed, defaultGroup)
-                trimmed.startsWith("hysteria2://", ignoreCase = true) || trimmed.startsWith("hy2://", ignoreCase = true) -> parseHysteria2(trimmed, defaultGroup)
-                trimmed.startsWith("tuic://", ignoreCase = true) -> parseTuic(trimmed, defaultGroup)
-                trimmed.startsWith("socks://", ignoreCase = true) || trimmed.startsWith("socks5://", ignoreCase = true) -> parseSocks(trimmed, defaultGroup)
+                cleanConfig.startsWith("{", ignoreCase = false) -> parseRawJsonConfig(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("vless://", ignoreCase = true) -> parseVless(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("vmess://", ignoreCase = true) -> parseVmess(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("trojan://", ignoreCase = true) -> parseTrojan(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("ss://", ignoreCase = true) -> parseShadowsocks(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("hysteria2://", ignoreCase = true) || cleanConfig.startsWith("hy2://", ignoreCase = true) -> parseHysteria2(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("tuic://", ignoreCase = true) -> parseTuic(cleanConfig, defaultGroup)
+                cleanConfig.startsWith("socks://", ignoreCase = true) || cleanConfig.startsWith("socks5://", ignoreCase = true) -> parseSocks(cleanConfig, defaultGroup)
                 else -> null
             }
         } catch (_: Exception) {
@@ -66,8 +87,10 @@ object VpnParser {
 
     fun decodeBase64Safe(input: String): String {
         return try {
-            val cleaned = input
+            val decodedInput = decodeUrl(input)
+            val cleaned = decodedInput
                 .substringBefore("#")
+                .substringBefore("?")
                 .replace("-", "+")
                 .replace("_", "/")
                 .replace("\n", "")
@@ -266,8 +289,12 @@ object VpnParser {
     }
 
     private fun splitHostPort(socketPart: String, defaultPort: Int): Pair<String, Int>? {
-        val cleaned = socketPart.trim()
+        var cleaned = socketPart.trim()
         if (cleaned.isBlank()) return null
+        
+        // Remove trailing slashes and any path
+        cleaned = cleaned.substringBefore("/").trim()
+        
         return if (cleaned.startsWith("[")) {
             val end = cleaned.indexOf(']')
             if (end == -1) return null
@@ -315,10 +342,10 @@ object VpnParser {
             host = host,
             networkType = network,
             flow = params["flow"] ?: "",
-            publicKey = params["pbk"] ?: params["publickey"] ?: "",
-            shortId = params["sid"] ?: params["shortid"] ?: "",
+            publicKey = params["pbk"] ?: params["publickey"] ?: params["public_key"] ?: params["public-key"] ?: "",
+            shortId = params["sid"] ?: params["shortid"] ?: params["short_id"] ?: params["short-id"] ?: "",
             fingerprint = params["fp"] ?: params["fingerprint"] ?: "chrome",
-            spiderX = params["spx"] ?: params["spiderx"] ?: "",
+            spiderX = params["spx"] ?: params["spiderx"] ?: params["spider_x"] ?: params["spider-x"] ?: "",
             alpn = params["alpn"] ?: "",
             encryption = params["encryption"] ?: "none",
             packetEncoding = params["packetencoding"] ?: "",
@@ -346,13 +373,21 @@ object VpnParser {
         val json = JSONObject(jsonStr)
         val add = json.optString("add", "")
         val port = json.optString("port", "443").toIntOrNull() ?: json.optInt("port", 443)
-        val id = json.optString("id", "")
+        val id = json.optString("id", json.optString("uuid", ""))
         if (add.isEmpty() || id.isEmpty()) return null
 
         val net = json.optString("net", "tcp")
         val path = json.optString("path", "")
         val host = json.optString("host", "")
-        val tls = json.optString("tls", json.optString("security", ""))
+        
+        val tlsObj = json.opt("tls")
+        val securityVal = json.optString("security", "")
+        val security = when {
+            tlsObj == "reality" || securityVal.equals("reality", true) -> "reality"
+            tlsObj == "tls" || tlsObj == true || tlsObj == "true" || securityVal.equals("tls", true) -> "tls"
+            else -> "none"
+        }
+        
         val sni = json.optString("sni", "").ifBlank { json.optString("serverName", "") }
         val fingerprint = json.optString("fp", "").ifBlank { json.optString("fingerprint", "chrome") }
 
@@ -362,7 +397,7 @@ object VpnParser {
             port = port,
             uuid = id,
             protocol = "VMESS",
-            security = if (tls.equals("tls", true) || tls.equals("reality", true)) tls.lowercase(Locale.US) else "none",
+            security = security,
             sni = sni.ifBlank { host },
             path = path,
             host = host,
@@ -374,7 +409,10 @@ object VpnParser {
             headerType = json.optString("type", ""),
             serviceName = json.optString("serviceName", ""),
             authority = json.optString("authority", ""),
-            allowInsecure = json.optString("allowInsecure", "false").equals("true", true),
+            allowInsecure = json.optBoolean("allowInsecure", false) ||
+                            json.optString("allowInsecure", "false").equals("true", true) ||
+                            json.optBoolean("skip-cert-verify", false) ||
+                            json.optString("skip-cert-verify", "false").equals("true", true),
             groupName = groupName,
             originalLink = link
         )

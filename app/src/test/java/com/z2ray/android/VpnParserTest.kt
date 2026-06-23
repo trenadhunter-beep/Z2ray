@@ -78,4 +78,21 @@ class VpnParserTest {
         assertEquals("ws", server.networkType)
         assertEquals("/ws", server.path)
     }
+
+    @Test
+    fun parsesVmessWithBooleanTlsAndSurroundingText() {
+        // VMess payload for: {"add":"1.2.3.4","port":443,"id":"uuid-here","net":"ws","path":"/path","tls":true,"ps":"Test VMess"}
+        val link = "Check this config out: vmess://eyJhZGQiOiIxLjIuMy40IiwicG9ydCI6NDQzLCJpZCI6InV1aWQtaGVyZSIsIm5ldCI6IndzIiwicGF0aCI6Ii9wYXRoIiwidGxzIjp0cnVlLCJwcyI6IlRlc3QgVk1lc3MifQ== and tell me."
+        val server = VpnParser.parseLine(link, "test")!!
+
+        assertEquals("VMESS", server.protocol)
+        assertEquals("Test VMess", server.name)
+        assertEquals("1.2.3.4", server.address)
+        assertEquals(443, server.port)
+        assertEquals("uuid-here", server.uuid)
+        assertEquals("ws", server.networkType)
+        assertEquals("/path", server.path)
+        assertEquals("tls", server.security)
+        assertTrue(server.allowInsecure.equals(false))
+    }
 }

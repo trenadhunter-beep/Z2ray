@@ -15,7 +15,12 @@ object XrayConfigBuilder {
         routingMode: String,
         customRules: List<CustomRoutingRule> = emptyList(),
         blockAds: Boolean = true,
-        domainStrategy: String = "IPIfNonMatch"
+        domainStrategy: String = "IPIfNonMatch",
+        enableFragment: Boolean = false,
+        fragmentSize: String = "10-20",
+        fragmentInterval: String = "10-20",
+        fragmentPackets: String = "tls",
+        allowLan: Boolean = false
     ): String {
         if (server.protocol.equals("CUSTOM_JSON", ignoreCase = true) && server.rawJson.isNotBlank()) {
             return server.rawJson
@@ -32,8 +37,8 @@ object XrayConfigBuilder {
             put("queryStrategy", "UseIP")
         })
 
-        root.put("inbounds", JSONArray().put(tunInbound(dnsServer)).put(localSocksInbound()))
-        root.put("outbounds", JSONArray().put(proxyOutbound(server)).put(directOutbound()).put(blockOutbound()))
+        root.put("inbounds", JSONArray().put(tunInbound(dnsServer)).put(localSocksInbound(allowLan)))
+        root.put("outbounds", JSONArray().put(proxyOutbound(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets)).put(directOutbound()).put(blockOutbound()))
         root.put("routing", routing(routingMode, customRules, blockAds, domainStrategy))
         root.put("policy", JSONObject().apply {
             put("levels", JSONObject().apply {
@@ -52,9 +57,9 @@ object XrayConfigBuilder {
         return root.toString(2)
     }
 
-    private fun localSocksInbound(): JSONObject = JSONObject().apply {
+    private fun localSocksInbound(allowLan: Boolean): JSONObject = JSONObject().apply {
         put("tag", "local-socks-in")
-        put("listen", "127.0.0.1")
+        put("listen", if (allowLan) "0.0.0.0" else "127.0.0.1")
         put("port", LOCAL_SOCKS_PORT)
         put("protocol", "socks")
         put("settings", JSONObject().apply {
@@ -85,19 +90,31 @@ object XrayConfigBuilder {
         })
     }
 
-    private fun proxyOutbound(server: VpnServer): JSONObject {
+    private fun proxyOutbound(
+        server: VpnServer,
+        enableFragment: Boolean,
+        fragmentSize: String,
+        fragmentInterval: String,
+        fragmentPackets: String
+    ): JSONObject {
         return when (server.protocol.uppercase()) {
-            "VMESS" -> vmessOutbound(server)
-            "TROJAN" -> trojanOutbound(server)
+            "VMESS" -> vmessOutbound(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets)
+            "TROJAN" -> trojanOutbound(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets)
             "SHADOWSOCKS", "SS" -> shadowsocksOutbound(server)
             "HYSTERIA2", "HY2", "HYSTERIA" -> hysteria2Outbound(server)
             "SOCKS", "SOCKS5" -> socksOutbound(server)
             "TUIC" -> unsupportedOutbound(server, "TUIC is not supported by Xray-core in this build. Use a raw sing-box JSON profile or another core.")
-            else -> vlessOutbound(server)
+            else -> vlessOutbound(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets)
         }
     }
 
-    private fun vlessOutbound(server: VpnServer): JSONObject = JSONObject().apply {
+    private fun vlessOutbound(
+        server: VpnServer,
+        enableFragment: Boolean,
+        fragmentSize: String,
+        fragmentInterval: String,
+        fragmentPackets: String
+    ): JSONObject = JSONObject().apply {
         put("tag", "proxy")
         put("protocol", "vless")
         put("settings", JSONObject().apply {
@@ -107,17 +124,26 @@ object XrayConfigBuilder {
                 put("users", JSONArray().put(JSONObject().apply {
                     put("id", server.uuid)
                     put("encryption", server.encryption.ifBlank { "none" })
-                    if (server.flow.isNotBlank()) put("flow", server.flow)
+                    val security = server.security.lowercase()
+                    if (server.flow.isNotBlank() && (security == "tls" || security == "reality")) {
+                        put("flow", server.flow)
+                    }
                     if (server.packetEncoding.isNotBlank()) put("packetEncoding", server.packetEncoding)
                     put("level", 0)
                 }))
             }))
         })
-        put("streamSettings", streamSettings(server))
+        put("streamSettings", streamSettings(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets))
         put("mux", muxSettings())
     }
 
-    private fun vmessOutbound(server: VpnServer): JSONObject = JSONObject().apply {
+    private fun vmessOutbound(
+        server: VpnServer,
+        enableFragment: Boolean,
+        fragmentSize: String,
+        fragmentInterval: String,
+        fragmentPackets: String
+    ): JSONObject = JSONObject().apply {
         put("tag", "proxy")
         put("protocol", "vmess")
         put("settings", JSONObject().apply {
@@ -132,11 +158,17 @@ object XrayConfigBuilder {
                 }))
             }))
         })
-        put("streamSettings", streamSettings(server))
+        put("streamSettings", streamSettings(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets))
         put("mux", muxSettings())
     }
 
-    private fun trojanOutbound(server: VpnServer): JSONObject = JSONObject().apply {
+    private fun trojanOutbound(
+        server: VpnServer,
+        enableFragment: Boolean,
+        fragmentSize: String,
+        fragmentInterval: String,
+        fragmentPackets: String
+    ): JSONObject = JSONObject().apply {
         put("tag", "proxy")
         put("protocol", "trojan")
         put("settings", JSONObject().apply {
@@ -147,7 +179,7 @@ object XrayConfigBuilder {
                 put("level", 0)
             }))
         })
-        put("streamSettings", streamSettings(server))
+        put("streamSettings", streamSettings(server, enableFragment, fragmentSize, fragmentInterval, fragmentPackets))
         put("mux", muxSettings())
     }
 
@@ -227,7 +259,13 @@ object XrayConfigBuilder {
         put("concurrency", 8)
     }
 
-    private fun streamSettings(server: VpnServer): JSONObject = JSONObject().apply {
+    private fun streamSettings(
+        server: VpnServer,
+        enableFragment: Boolean,
+        fragmentSize: String,
+        fragmentInterval: String,
+        fragmentPackets: String
+    ): JSONObject = JSONObject().apply {
         val network = normalizeNetwork(server.networkType)
         val security = server.security.ifBlank { "none" }.lowercase()
 
@@ -236,6 +274,16 @@ object XrayConfigBuilder {
 
         if (security == "tls") put("tlsSettings", tlsSettings(server))
         if (security == "reality") put("realitySettings", realitySettings(server))
+
+        if (enableFragment) {
+            put("sockopt", JSONObject().apply {
+                put("fragment", JSONObject().apply {
+                    put("packets", fragmentPackets.ifBlank { "tls" })
+                    put("length", fragmentSize.ifBlank { "10-20" })
+                    put("interval", fragmentInterval.ifBlank { "10-20" })
+                })
+            })
+        }
 
         when (network) {
             "ws" -> put("wsSettings", wsSettings(server))

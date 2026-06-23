@@ -166,17 +166,18 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
             )
         },
         bottomBar = {
+            val strings = AppStrings.current
             NavigationBar(
                 containerColor = CyberNavy,
                 tonalElevation = 8.dp,
                 modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
             ) {
                 val items = listOf(
-                    NavigationItem("Home", Icons.Filled.Home, ScreenTab.HOME, "tab_home"),
-                    NavigationItem("Configs", Icons.Filled.Dns, ScreenTab.CONFIGS, "tab_configs"),
-                    NavigationItem("Security", Icons.Filled.Security, ScreenTab.SECURITY, "tab_security"),
-                    NavigationItem("Subs", Icons.Filled.Link, ScreenTab.SUBS, "tab_subscriptions"),
-                    NavigationItem("Console", Icons.Filled.Terminal, ScreenTab.LOGS, "tab_logs")
+                    NavigationItem(strings.tabHome, Icons.Filled.Home, ScreenTab.HOME, "tab_home"),
+                    NavigationItem(strings.tabConfigs, Icons.Filled.Dns, ScreenTab.CONFIGS, "tab_configs"),
+                    NavigationItem(strings.tabSecurity, Icons.Filled.Settings, ScreenTab.SECURITY, "tab_security"),
+                    NavigationItem(strings.tabSubs, Icons.Filled.Link, ScreenTab.SUBS, "tab_subscriptions"),
+                    NavigationItem(strings.tabConsole, Icons.Filled.Terminal, ScreenTab.LOGS, "tab_logs")
                 )
 
                 items.forEach { item ->
@@ -488,126 +489,13 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
             }
         }
 
-        // Bento Grid Section (2 Rows, 2 Columns)
+        // Speed Metrics Section: Download & Upload side-by-side (simplified Home Screen)
         item {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Latency Bento Card
-                Card(
-                    modifier = Modifier.weight(1f).height(110.dp),
-                    colors = CardDefaults.cardColors(containerColor = BentoCard),
-                    shape = RoundedCornerShape(24.dp),
-                    border = borderStroke(1.dp, BentoBorder.copy(alpha = 0.2f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Speed,
-                                contentDescription = "Latency Icon",
-                                tint = BentoPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                "LATENCY",
-                                color = BentoPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                        }
-
-                        val latency = selectedSrv?.latency ?: 0
-                        val (latencyColor, valStr) = when {
-                            latency == 0 -> Pair(BentoTextSecondary, "Check")
-                            latency < 0 -> Pair(DangerRed, "Timeout")
-                            else -> Pair(BentoTextPrimary, "$latency")
-                        }
-
-                        Row(
-                            verticalAlignment = Alignment.Bottom,
-                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            Text(
-                                text = valStr,
-                                color = latencyColor,
-                                fontSize = 24.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            if (latency > 0) {
-                                Text(
-                                    text = "ms",
-                                    color = BentoTextSecondary,
-                                    fontSize = 12.sp,
-                                    modifier = Modifier.padding(bottom = 3.dp)
-                                )
-                            }
-                        }
-                    }
-                }
-
-                // Encryption / Security Bento Card
-                Card(
-                    modifier = Modifier.weight(1f).height(110.dp),
-                    colors = CardDefaults.cardColors(containerColor = BentoCard),
-                    shape = RoundedCornerShape(24.dp),
-                    border = borderStroke(1.dp, BentoBorder.copy(alpha = 0.2f))
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Security,
-                                contentDescription = "Security Icon",
-                                tint = BentoPrimary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Text(
-                                "ENCRYPTION",
-                                color = BentoPrimary,
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 1.sp
-                            )
-                        }
-
-                        val cipherType = selectedSrv?.protocol?.uppercase() ?: "REALITY"
-                        Text(
-                            text = if (connectionState == ConnectionState.CONNECTED) "TLS 1.3 / $cipherType" else "TLS 1.3 / X25519",
-                            color = BentoTextPrimary,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                }
-            }
-        }
-
-        item {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Download Speed Bento Card
+                // Download Speed Card
                 Card(
                     modifier = Modifier.weight(1f).height(110.dp),
                     colors = CardDefaults.cardColors(containerColor = BentoCard),
@@ -631,7 +519,7 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                "DOWNLOAD",
+                                text = if (appLanguage == "fa") "دانلود" else if (appLanguage == "ru") "СКАЧАТЬ" else "DOWNLOAD",
                                 color = BentoPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -651,12 +539,12 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                     }
                 }
 
-                // Config/Routing Mode Bento Card
+                // Upload Speed Card
                 Card(
                     modifier = Modifier.weight(1f).height(110.dp),
-                    colors = CardDefaults.cardColors(containerColor = BentoBorder.copy(alpha = 0.2f)),
+                    colors = CardDefaults.cardColors(containerColor = BentoCard),
                     shape = RoundedCornerShape(24.dp),
-                    border = borderStroke(1.dp, BentoPrimary.copy(alpha = 0.15f))
+                    border = borderStroke(1.dp, BentoBorder.copy(alpha = 0.2f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -669,13 +557,13 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
                             Icon(
-                                imageVector = Icons.Filled.Dns,
-                                contentDescription = "Mode Icon",
+                                imageVector = Icons.Filled.CloudUpload,
+                                contentDescription = "Upload Icon",
                                 tint = BentoPrimary,
                                 modifier = Modifier.size(16.dp)
                             )
                             Text(
-                                "MODE",
+                                text = if (appLanguage == "fa") "آپلود" else if (appLanguage == "ru") "ОТПРАВКА" else "UPLOAD",
                                 color = BentoPrimary,
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Bold,
@@ -683,23 +571,18 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                             )
                         }
 
-                        val modeStr = if (securitySet.routingMode == "Bypass Iran") "Smart Route" else "Global Proxy"
                         Text(
-                            text = modeStr,
+                            text = if (connectionState == ConnectionState.CONNECTED) uSpeed else "0.0 B/s",
                             color = BentoTextPrimary,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium,
+                            fontSize = 20.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
                 }
             }
-        }
-
-        // Live Speed Metrics Real-time Chart (Recharts style visualization)
-        item {
-            SpeedChart(viewModel = viewModel)
         }
 
         // Animated Active Server Picker Bar (Bottom Bento Layer)
@@ -1036,6 +919,7 @@ fun ServerListScreen(viewModel: VpnViewModel) {
     val serversList by viewModel.servers.collectAsStateWithLifecycle()
     val selectedSrv by viewModel.selectedServer.collectAsStateWithLifecycle()
     val isPinging by viewModel.isPingingAll.collectAsStateWithLifecycle()
+    val appLanguage by viewModel.appLanguage.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
     var searchQuery by remember { mutableStateOf("") }
@@ -1051,6 +935,9 @@ fun ServerListScreen(viewModel: VpnViewModel) {
     var detailServer by remember { mutableStateOf<VpnServer?>(null) }
     var editServer by remember { mutableStateOf<VpnServer?>(null) }
     var qrServer by remember { mutableStateOf<VpnServer?>(null) }
+    var selectModeEnabled by remember { mutableStateOf(false) }
+    var selectedServerIds by remember { mutableStateOf(setOf<Int>()) }
+    var showManualCreateDialog by remember { mutableStateOf(false) }
 
     val protocols = remember(serversList) { listOf("All") + serversList.map { it.protocol }.distinct().sorted() }
     val groups = remember(serversList) { listOf("All") + serversList.map { it.groupName }.distinct().sorted() }
@@ -1147,7 +1034,88 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                 CompactSelector("Sort", sortMode, listOf("Latency", "Name", "Protocol", "Group", "Newest"), Modifier.weight(1f)) { sortMode = it }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // Action row for quick import, manual create and selection delete
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE) as android.content.ClipboardManager
+                        val clipData = clipboard.primaryClip
+                        if (clipData != null && clipData.itemCount > 0) {
+                            val text = clipData.getItemAt(0).text?.toString().orEmpty()
+                            if (text.isNotBlank()) {
+                                viewModel.addServerFromLink(text) { success ->
+                                    if (success) {
+                                        android.widget.Toast.makeText(context, if (appLanguage == "fa") "کانفیگ با موفقیت اضافه شد!" else "Import Success!", android.widget.Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        android.widget.Toast.makeText(context, if (appLanguage == "fa") "پیکربندی نامعتبر است!" else "Invalid config format!", android.widget.Toast.LENGTH_SHORT).show()
+                                    }
+                                }
+                            } else {
+                                android.widget.Toast.makeText(context, if (appLanguage == "fa") "کلیپ‌بورد خالی است!" else "Clipboard is empty!", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            android.widget.Toast.makeText(context, if (appLanguage == "fa") "کلیپ‌بورد خالی است!" else "Clipboard is empty!", android.widget.Toast.LENGTH_SHORT).show()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCard),
+                    border = borderStroke(1.dp, CyberPrimary.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 10.dp)
+                ) {
+                    Icon(Icons.Filled.ContentPaste, contentDescription = "Clipboard", tint = CyberPrimary, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (appLanguage == "fa") "کلیپ‌بورد" else if (appLanguage == "ru") "Из буфера" else "Clipboard", color = CyberTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Button(
+                    onClick = { showManualCreateDialog = true },
+                    colors = ButtonDefaults.buttonColors(containerColor = CyberCard),
+                    border = borderStroke(1.dp, SecureGreen.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 10.dp)
+                ) {
+                    Icon(Icons.Filled.Edit, contentDescription = "Manual Create", tint = SecureGreen, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(if (appLanguage == "fa") "ساخت دستی" else if (appLanguage == "ru") "Вручную" else "Manual", color = CyberTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+
+                val isSelectMode = selectModeEnabled
+                Button(
+                    onClick = {
+                        selectModeEnabled = !selectModeEnabled
+                        if (!selectModeEnabled) {
+                            selectedServerIds = emptySet()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = if (isSelectMode) DangerRed.copy(alpha = 0.2f) else CyberCard),
+                    border = borderStroke(1.dp, if (isSelectMode) DangerRed else CyberTextSecondary.copy(alpha = 0.5f)),
+                    shape = RoundedCornerShape(10.dp),
+                    modifier = Modifier.weight(1f),
+                    contentPadding = PaddingValues(vertical = 10.dp)
+                ) {
+                    Icon(Icons.Filled.CheckCircle, contentDescription = "Select", tint = if (isSelectMode) DangerRed else CyberTextSecondary, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(
+                        text = if (isSelectMode) {
+                            if (appLanguage == "fa") "لغو انتخاب" else if (appLanguage == "ru") "Отмена" else "Cancel"
+                        } else {
+                            if (appLanguage == "fa") "انتخاب حذف" else if (appLanguage == "ru") "Выбрать" else "Select"
+                        },
+                        color = CyberTextPrimary,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
 
             // Server count indicators
             Row(
@@ -1229,18 +1197,40 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                 ) {
                     items(filteredServers, key = { it.id }) { server ->
                         val isSelected = selectedSrv?.id == server.id
+                        val isBatchSelected = selectedServerIds.contains(server.id)
+                        val cardBg = when {
+                            isBatchSelected -> DangerRed.copy(alpha = 0.12f)
+                            isSelected -> CyberNavy
+                            else -> CyberCard
+                        }
+                        val cardBorder = when {
+                            isBatchSelected -> DangerRed
+                            isSelected -> CyberPrimary
+                            else -> Color.Transparent
+                        }
+
                         Card(
                             colors = CardDefaults.cardColors(
-                                containerColor = if (isSelected) CyberNavy else CyberCard
+                                containerColor = cardBg
                             ),
                             shape = RoundedCornerShape(12.dp),
                             border = borderStroke(
                                 width = 1.dp,
-                                color = if (isSelected) CyberPrimary else Color.Transparent
+                                color = cardBorder
                             ),
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { viewModel.selectServer(server) }
+                                .clickable {
+                                    if (selectModeEnabled) {
+                                        selectedServerIds = if (isBatchSelected) {
+                                            selectedServerIds - server.id
+                                        } else {
+                                            selectedServerIds + server.id
+                                        }
+                                    } else {
+                                        viewModel.selectServer(server)
+                                    }
+                                }
                                 .testTag("config_item_${server.id}")
                         ) {
                             Row(
@@ -1254,15 +1244,31 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                                     modifier = Modifier.weight(1f),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    // Status selected radio
-                                    RadioButton(
-                                        selected = isSelected,
-                                        onClick = { viewModel.selectServer(server) },
-                                        colors = RadioButtonDefaults.colors(
-                                            selectedColor = CyberPrimary,
-                                            unselectedColor = CyberTextSecondary
+                                    if (selectModeEnabled) {
+                                        Checkbox(
+                                            checked = isBatchSelected,
+                                            onCheckedChange = { checked ->
+                                                selectedServerIds = if (checked == true) {
+                                                    selectedServerIds + server.id
+                                                } else {
+                                                    selectedServerIds - server.id
+                                                }
+                                            },
+                                            colors = CheckboxDefaults.colors(
+                                                checkedColor = DangerRed,
+                                                uncheckedColor = CyberTextSecondary
+                                            )
                                         )
-                                    )
+                                    } else {
+                                        RadioButton(
+                                            selected = isSelected,
+                                            onClick = { viewModel.selectServer(server) },
+                                            colors = RadioButtonDefaults.colors(
+                                                selectedColor = CyberPrimary,
+                                                unselectedColor = CyberTextSecondary
+                                            )
+                                        )
+                                    }
                                     
                                     Spacer(modifier = Modifier.width(4.dp))
 
@@ -1393,7 +1399,13 @@ fun ServerListScreen(viewModel: VpnViewModel) {
         editServer?.let { server ->
             EditServerDialog(
                 server = server,
+                appLanguage = appLanguage,
                 onDismiss = { editServer = null },
+                onDelete = {
+                    viewModel.deleteServer(server)
+                    editServer = null
+                    detailServer = null
+                },
                 onSave = {
                     viewModel.updateServer(it)
                     editServer = null
@@ -1404,6 +1416,149 @@ fun ServerListScreen(viewModel: VpnViewModel) {
 
         qrServer?.let { server ->
             QrShareDialog(server = server, onDismiss = { qrServer = null })
+        }
+
+        if (selectModeEnabled && selectedServerIds.isNotEmpty()) {
+            Surface(
+                color = DangerRed.copy(alpha = 0.95f),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 90.dp, start = 24.dp, end = 24.dp)
+                    .fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = if (appLanguage == "fa") "حذف ${selectedServerIds.size} کانفیگ انتخاب شده؟"
+                               else if (appLanguage == "ru") "Удалить ${selectedServerIds.size} селектированных?"
+                               else "Delete ${selectedServerIds.size} selected configs?",
+                        color = Color.White,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Button(
+                        onClick = {
+                            selectedServerIds.forEach { id ->
+                                serversList.firstOrNull { it.id == id }?.let { server ->
+                                    viewModel.deleteServer(server)
+                                }
+                            }
+                            selectedServerIds = emptySet()
+                            selectModeEnabled = false
+                            android.widget.Toast.makeText(context, if (appLanguage == "fa") "کانفیگ‌ها حذف شدند" else "Deleted successfully", android.widget.Toast.LENGTH_SHORT).show()
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color.White, contentColor = DangerRed),
+                        shape = RoundedCornerShape(10.dp),
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                    ) {
+                        Text(if (appLanguage == "fa") "حذف قطعی" else if (appLanguage == "ru") "Да, Удалить" else "Confirm Delete", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
+        }
+
+        if (showManualCreateDialog) {
+            var mName by remember { mutableStateOf("Manual Server") }
+            var mProtocol by remember { mutableStateOf("VLESS") }
+            var mAddress by remember { mutableStateOf("") }
+            var mPort by remember { mutableStateOf("443") }
+            var mUuid by remember { mutableStateOf("") }
+            var mSecurity by remember { mutableStateOf("reality") }
+            var mNetwork by remember { mutableStateOf("tcp") }
+            var mSni by remember { mutableStateOf("") }
+            var mPath by remember { mutableStateOf("") }
+            var mPublicKey by remember { mutableStateOf("") }
+            var mShortId by remember { mutableStateOf("") }
+
+            AlertDialog(
+                onDismissRequest = { showManualCreateDialog = false },
+                title = { Text(if (appLanguage == "fa") "ساخت دستی کانفیگ" else "Create Manual Config", color = CyberTextPrimary, fontWeight = FontWeight.Bold) },
+                text = {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 400.dp)) {
+                        item { EditField(if (appLanguage == "fa") "نام" else "Name", mName) { mName = it } }
+                        item {
+                            Column {
+                                Text(if (appLanguage == "fa") "پروتکل" else "Protocol", color = CyberTextSecondary, fontSize = 11.sp)
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    listOf("VLESS", "VMESS", "TROJAN", "SHADOWSOCKS").forEach { p ->
+                                        val isSelected = mProtocol == p
+                                        Box(
+                                            modifier = Modifier
+                                                .weight(1f)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(if (isSelected) CyberPrimary else CyberCard)
+                                                .clickable {
+                                                    mProtocol = p
+                                                    if (p == "SHADOWSOCKS") mSecurity = "aes-128-gcm"
+                                                    else if (p == "TROJAN") mSecurity = "tls"
+                                                    else mSecurity = "reality"
+                                                }
+                                                .padding(vertical = 6.dp),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Text(p, color = if (isSelected) CyberBlack else CyberTextPrimary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        item { EditField(if (appLanguage == "fa") "آدرس سرور (IP/Host)" else "Server Address", mAddress) { mAddress = it } }
+                        item { EditField(if (appLanguage == "fa") "پورت" else "Port", mPort) { mPort = it.filter { c -> c.isDigit() } } }
+                        item { EditField(if (appLanguage == "fa") "شناسه UUID / رمز عبور" else "UUID / Password", mUuid) { mUuid = it } }
+                        item { EditField(if (appLanguage == "fa") "امنیت (tls / reality / none)" else "Security", mSecurity) { mSecurity = it } }
+                        item { EditField(if (appLanguage == "fa") "نوع شبکه (tcp / ws / grpc)" else "Transport Network", mNetwork) { mNetwork = it } }
+                        item { EditField("SNI", mSni) { mSni = it } }
+                        item { EditField(if (appLanguage == "fa") "مسیر (Path)" else "Path", mPath) { mPath = it } }
+                        if (mSecurity.lowercase() == "reality") {
+                            item { EditField(if (appLanguage == "fa") "کلید عمومی (Public Key)" else "Reality Public Key", mPublicKey) { mPublicKey = it } }
+                            item { EditField(if (appLanguage == "fa") "شناسه کوتاه (Short ID)" else "Reality Short ID", mShortId) { mShortId = it } }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            if (mAddress.isNotBlank()) {
+                                viewModel.addManualServer(
+                                    VpnServer(
+                                        name = mName.ifBlank { "Manual $mProtocol" },
+                                        address = mAddress,
+                                        port = mPort.toIntOrNull() ?: 443,
+                                        uuid = mUuid,
+                                        protocol = mProtocol,
+                                        security = mSecurity,
+                                        networkType = mNetwork,
+                                        sni = mSni,
+                                        path = mPath,
+                                        publicKey = mPublicKey,
+                                        shortId = mShortId,
+                                        groupName = if (appLanguage == "fa") "ساخت دستی" else "Manual Configs",
+                                        isCustom = true,
+                                        originalLink = ""
+                                    )
+                                )
+                                showManualCreateDialog = false
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = CyberPrimary, contentColor = CyberBlack),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(if (appLanguage == "fa") "ایجاد کانفیگ" else "CREATE")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showManualCreateDialog = false }) {
+                        Text(if (appLanguage == "fa") "لغو" else "CANCEL", color = CyberTextSecondary)
+                    }
+                },
+                containerColor = CyberNavy,
+                shape = RoundedCornerShape(20.dp)
+            )
         }
 
         detailServer?.let { server ->
@@ -1694,7 +1849,13 @@ fun QrShareDialog(server: VpnServer, onDismiss: () -> Unit) {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun EditServerDialog(server: VpnServer, onDismiss: () -> Unit, onSave: (VpnServer) -> Unit) {
+fun EditServerDialog(
+    server: VpnServer,
+    appLanguage: String,
+    onDismiss: () -> Unit,
+    onDelete: () -> Unit,
+    onSave: (VpnServer) -> Unit
+) {
     var name by remember(server.id) { mutableStateOf(server.name) }
     var address by remember(server.id) { mutableStateOf(server.address) }
     var port by remember(server.id) { mutableStateOf(server.port.toString()) }
@@ -1711,24 +1872,48 @@ fun EditServerDialog(server: VpnServer, onDismiss: () -> Unit, onSave: (VpnServe
     var fingerprint by remember(server.id) { mutableStateOf(server.fingerprint) }
     var alpn by remember(server.id) { mutableStateOf(server.alpn) }
 
+    val titleStr = when (appLanguage) {
+        "fa" -> "ویرایش پیکربندی"
+        "ru" -> "Редактировать конфигурацию"
+        else -> "Edit Configuration"
+    }
+
+    val saveStr = when (appLanguage) {
+        "fa" -> "ذخیره"
+        "ru" -> "СОХРАНИТЬ"
+        else -> "SAVE"
+    }
+
+    val deleteStr = when (appLanguage) {
+        "fa" -> "حذف"
+        "ru" -> "УДАЛИТЬ"
+        else -> "DELETE"
+    }
+
+    val closeStr = when (appLanguage) {
+        "fa" -> "بستن"
+        "ru" -> "ЗАКРЫТЬ"
+        else -> "CLOSE"
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Edit Configuration", color = CyberTextPrimary, fontWeight = FontWeight.Bold) },
+        title = { Text(titleStr, color = CyberTextPrimary, fontWeight = FontWeight.Bold) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 500.dp)) {
-                item { EditField("Name", name) { name = it } }
-                item { EditField("Protocol", protocol) { protocol = it.uppercase() } }
-                item { EditField("Address", address) { address = it } }
-                item { EditField("Port", port) { port = it.filter { c -> c.isDigit() } } }
-                item { EditField("UUID / Password", uuid) { uuid = it } }
-                item { EditField("Security", security) { security = it.lowercase() } }
-                item { EditField("Transport", network) { network = it.lowercase() } }
+                item { EditField(if (appLanguage == "fa") "نام" else if (appLanguage == "ru") "Имя" else "Name", name) { name = it } }
+                item { EditField(if (appLanguage == "fa") "پروتکل" else if (appLanguage == "ru") "Протокол" else "Protocol", protocol) { protocol = it.uppercase() } }
+                item { EditField(if (appLanguage == "fa") "آدرس سرور" else if (appLanguage == "ru") "Адрес" else "Address", address) { address = it } }
+                item { EditField(if (appLanguage == "fa") "پورت" else if (appLanguage == "ru") "Порт" else "Port", port) { port = it.filter { c -> c.isDigit() } } }
+                item { EditField(if (appLanguage == "fa") "شناسه UUID / رمز عبور" else if (appLanguage == "ru") "UUID / Пароль" else "UUID / Password", uuid) { uuid = it } }
+                item { EditField(if (appLanguage == "fa") "امنیت (Security)" else if (appLanguage == "ru") "Безопасность" else "Security", security) { security = it.lowercase() } }
+                item { EditField(if (appLanguage == "fa") "ترانسپورت (Network)" else if (appLanguage == "ru") "Транспорт" else "Transport", network) { network = it.lowercase() } }
                 item { EditField("SNI", sni) { sni = it } }
-                item { EditField("Host / Authority", host) { host = it } }
-                item { EditField("Path / Service", path) { path = it } }
+                item { EditField(if (appLanguage == "fa") "هاست / Authority" else if (appLanguage == "ru") "Хост / Authority" else "Host / Authority", host) { host = it } }
+                item { EditField(if (appLanguage == "fa") "مسیر / Service" else if (appLanguage == "ru") "Путь / Service" else "Path / Service", path) { path = it } }
                 item { EditField("Flow", flow) { flow = it } }
-                item { EditField("Reality Public Key", publicKey) { publicKey = it } }
-                item { EditField("Reality Short ID", shortId) { shortId = it } }
+                item { EditField(if (appLanguage == "fa") "کلید عمومی Reality" else if (appLanguage == "ru") "Reality Public Key" else "Reality Public Key", publicKey) { publicKey = it } }
+                item { EditField(if (appLanguage == "fa") "شناسه کوتاه Reality Short ID" else if (appLanguage == "ru") "Reality Short ID" else "Reality Short ID", shortId) { shortId = it } }
                 item { EditField("Fingerprint", fingerprint) { fingerprint = it } }
                 item { EditField("ALPN", alpn) { alpn = it } }
             }
@@ -1757,12 +1942,31 @@ fun EditServerDialog(server: VpnServer, onDismiss: () -> Unit, onSave: (VpnServe
                         )
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = CyberPrimary, contentColor = CyberBlack)
-            ) { Text("SAVE") }
+                colors = ButtonDefaults.buttonColors(containerColor = CyberPrimary, contentColor = CyberBlack),
+                shape = RoundedCornerShape(10.dp)
+            ) { Text(saveStr, fontWeight = FontWeight.Bold) }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("CANCEL", color = CyberTextSecondary) } },
+        dismissButton = {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onDelete,
+                    colors = ButtonDefaults.textButtonColors(contentColor = DangerRed)
+                ) {
+                    Text(deleteStr, fontWeight = FontWeight.Bold)
+                }
+                TextButton(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.textButtonColors(contentColor = CyberTextSecondary)
+                ) {
+                    Text(closeStr)
+                }
+            }
+        },
         containerColor = CyberNavy,
-        shape = RoundedCornerShape(16.dp)
+        shape = RoundedCornerShape(24.dp)
     )
 }
 
@@ -1803,6 +2007,9 @@ fun SecurityScreen(viewModel: VpnViewModel) {
     val isRunningNetworkTest by viewModel.isRunningNetworkTest.collectAsStateWithLifecycle()
     var showRoutingImportDialog by remember { mutableStateOf(false) }
     var routingImportText by remember { mutableStateOf("") }
+    var autoConnectOnBoot by remember { mutableStateOf(false) }
+    var speedInNotification by remember { mutableStateOf(true) }
+    var keepAliveActive by remember { mutableStateOf(true) }
 
     LazyColumn(
         modifier = Modifier
@@ -1812,22 +2019,362 @@ fun SecurityScreen(viewModel: VpnViewModel) {
     ) {
         item {
             Text(
-                text = if (appLanguage == "fa") "پروتکل‌های پیشرفته ضد فیلتر" else "ADVANCED CIRCUMVENTION PROTOCOLS",
+                text = if (appLanguage == "fa") "تنظیمات پیشرفته هسته و سیستم" else if (appLanguage == "ru") "РАСШИРЕННЫЕ НАСТРОЙКИ ЯДРА" else "ADVANCED CORE & SYSTEM SETTINGS",
                 color = CyberPrimary,
                 fontSize = 11.sp,
                 fontWeight = FontWeight.Bold,
                 letterSpacing = 1.5.sp
             )
             Text(
-                text = if (appLanguage == "fa") "بهینه‌سازی ضافیلترینگ و لایه‌های رمزنگاری ترافیک شبکه همراه و خانگی." else "Optimize anti-filtering and active traffic encryption specifically configured for domestic networks.",
+                text = if (appLanguage == "fa") "پیکربندی کامل پارامترهای پروتکل، اتصالات محلی و قوانین فیلترینگ منطبق بر ویتوری." 
+                       else if (appLanguage == "ru") "Полная конфигурация локальных портов, стратегий маршрутизации, DNS, uTLS и MUX."
+                       else "Configure routing domain strategies, local ports, DNS query, fakeDNS, MUX multiplexing, and certificate checks.",
                 color = CyberTextSecondary,
                 fontSize = 12.sp,
                 modifier = Modifier.padding(top = 4.dp)
             )
         }
 
+        // Card 1: Local port and Connection Settings
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Build, contentDescription = "Core Settings", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "اتصالات محلی و هسته" else if (appLanguage == "ru") "Локальные порты и Ядро" else "Core Connection & Port Settings",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
 
+                    // SOCKS Port
+                    var tempPort by remember(settings.localSocksPort) { mutableStateOf(settings.localSocksPort) }
+                    OutlinedTextField(
+                        value = tempPort,
+                        onValueChange = {
+                            tempPort = it
+                            viewModel.updateSecuritySettings(settings.copy(localSocksPort = it.filter { c -> c.isDigit() }))
+                        },
+                        label = { Text(if (appLanguage == "fa") "پورت محلی SOCKS" else if (appLanguage == "ru") "Локальный порт SOCKS" else "Local SOCKS Port", color = CyberTextSecondary, fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyberPrimary,
+                            unfocusedBorderColor = CyberCard,
+                            focusedTextColor = CyberTextPrimary,
+                            unfocusedTextColor = CyberTextPrimary
+                        )
+                    )
 
+                    // Enable Sniffing
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "ردیابی هوشمند مقصد (Traffic Sniffing)" else if (appLanguage == "ru") "Распознавание трафика (Sniffing)" else "Enable Traffic Sniffing",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "تشخیص مقصد دامنه‌ها در استریم برای هدایت دقیق ترافیک (توصیه شده)." else if (appLanguage == "ru") "Определяет доменные имена в потоке для точной маршрутизации." else "Detects domain names from raw stream to apply correct routing rules.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.enableSniffing,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(enableSniffing = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Domain Strategy selector
+                    Column {
+                        Text(
+                            text = if (appLanguage == "fa") "استراتژی مسیریابی دامنه" else if (appLanguage == "ru") "Стратегия разрешения доменов" else "Domain Resolution Strategy",
+                            color = CyberTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("AsIs", "IPIfNonMatch", "IPOnDemand").forEach { strategy ->
+                                val isSelected = settings.routingDnsStrategy == strategy
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) CyberPrimary else CyberCard)
+                                        .clickable { viewModel.updateSecuritySettings(settings.copy(routingDnsStrategy = strategy)) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(strategy, color = if (isSelected) CyberBlack else CyberTextPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Log level selector
+                    Column {
+                        Text(
+                            text = if (appLanguage == "fa") "سطح ثبت گزارشات هسته" else if (appLanguage == "ru") "Уровень логов Ядра" else "Xray Core Log Level",
+                            color = CyberTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("warning", "info", "debug", "none").forEach { level ->
+                                val isSelected = settings.logLevel == level
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) CyberPrimary else CyberCard)
+                                        .clickable { viewModel.updateSecuritySettings(settings.copy(logLevel = level)) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(level.uppercase(), color = if (isSelected) CyberBlack else CyberTextPrimary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Card 2: DNS & FakeDNS settings
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Dns, contentDescription = "DNS Settings", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "تنظیمات دی‌ان‌اس (DNS & FakeDNS)" else if (appLanguage == "ru") "Настройки DNS и FakeDNS" else "Secure DNS & FakeDNS Settings",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    // Enable FakeDNS
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "فعال‌سازی FakeDNS" else if (appLanguage == "ru") "Включить FakeDNS сопоставление" else "Enable FakeDNS Mapping",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "کاهش بار فرآیند پاسخگویی DNS و رفع نشتی آی‌پی با ترسیم آدرس‌های موقت." else if (appLanguage == "ru") "Сопоставляет фейковые IP доменам для обхода задержек и утечек DNS." else "Maps fake IP addresses to domains to reduce query latency and bypass leaks.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.enableFakeDns,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(enableFakeDns = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Remote DNS input
+                    var tempRemoteDns by remember(settings.remoteDns) { mutableStateOf(settings.remoteDns) }
+                    OutlinedTextField(
+                        value = tempRemoteDns,
+                        onValueChange = {
+                            tempRemoteDns = it
+                            viewModel.updateSecuritySettings(settings.copy(remoteDns = it))
+                        },
+                        label = { Text(if (appLanguage == "fa") "سرور DNS خارجی / امن (Remote DNS)" else if (appLanguage == "ru") "Удаленный DNS-сервер" else "Remote DNS Server", color = CyberTextSecondary, fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyberPrimary,
+                            unfocusedBorderColor = CyberCard,
+                            focusedTextColor = CyberTextPrimary,
+                            unfocusedTextColor = CyberTextPrimary
+                        )
+                    )
+
+                    // Domestic DNS input
+                    var tempDirectDns by remember(settings.directDns) { mutableStateOf(settings.directDns) }
+                    OutlinedTextField(
+                        value = tempDirectDns,
+                        onValueChange = {
+                            tempDirectDns = it
+                            viewModel.updateSecuritySettings(settings.copy(directDns = it))
+                        },
+                        label = { Text(if (appLanguage == "fa") "سرور DNS داخلی / مستقیم (Domestic DNS)" else if (appLanguage == "ru") "Локальный/Домашний DNS-сервер" else "Direct/Domestic DNS Server", color = CyberTextSecondary, fontSize = 11.sp) },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = CyberPrimary,
+                            unfocusedBorderColor = CyberCard,
+                            focusedTextColor = CyberTextPrimary,
+                            unfocusedTextColor = CyberTextPrimary
+                        )
+                    )
+                }
+            }
+        }
+
+        // Card 3: Advanced Optimization & MUX
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Bolt, contentDescription = "MUX Settings", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "تنظیمات بهینه‌سازی مالتی‌پلکس (MUX)" else if (appLanguage == "ru") "Оптимизация трафика и MUX" else "Advanced Optimization & MUX",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    // Enable MUX
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "فعال‌سازی مالتی‌پلکسر MUX" else if (appLanguage == "ru") "Включить MUX мультиплексирование" else "Enable MUX Multiplexing",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "ادغام اتصال‌های TCP در کانال واحد برای کاهش سربار دست‌دهی (توصیه شده فقط برای VMess)." else if (appLanguage == "ru") "Объединяет несколько TCP-соединений в один канал для снижения задержки." else "Consolidates multiple TCP connections inside a single channel to reduce handshake overhead.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.enableMux,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(enableMux = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    if (settings.enableMux) {
+                        // Mux Concurrency
+                        var tempMux by remember(settings.muxConcurrency) { mutableStateOf(settings.muxConcurrency) }
+                        OutlinedTextField(
+                            value = tempMux,
+                            onValueChange = {
+                                tempMux = it
+                                viewModel.updateSecuritySettings(settings.copy(muxConcurrency = it.filter { c -> c.isDigit() }))
+                            },
+                            label = { Text(if (appLanguage == "fa") "حداکثر اتصالات همزمان MUX" else if (appLanguage == "ru") "Макс. параллельность MUX (1..16)" else "MUX Concurrency (1..16)", color = CyberTextSecondary, fontSize = 11.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = CyberPrimary,
+                                unfocusedBorderColor = CyberCard,
+                                focusedTextColor = CyberTextPrimary,
+                                unfocusedTextColor = CyberTextPrimary
+                            )
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Skip cert verify / Allow Insecure
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "اجازه اتصال‌های ناامن SSL (نامعتبر)" else if (appLanguage == "ru") "Разрешить небезопасные соединения" else "Allow Insecure Connections",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "نادیده گرفتن اعتبارسنجی گواهی‌های منقضی یا ساختگی SSL (جلوگیری از قطع اتصال با جعل‌های داخلی)." else if (appLanguage == "ru") "Пропускает валидацию SSL-сертификатов для предотвращения сбоев." else "Bypasses SSL certificate verification to avoid failures caused by localized fake cert injections.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.allowInsecure,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(allowInsecure = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // TLS Client Fingerprint selector
+                    Column {
+                        Text(
+                            text = if (appLanguage == "fa") "اثرانگشت مرورگر (uTLS Fingerprint)" else if (appLanguage == "ru") "uTLS Иммитация Браузера" else "uTLS Client Fingerprint",
+                            color = CyberTextPrimary,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            listOf("chrome", "firefox", "safari", "random").forEach { fp ->
+                                val isSelected = settings.fingerprint == fp
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isSelected) CyberPrimary else CyberCard)
+                                        .clickable { viewModel.updateSecuritySettings(settings.copy(fingerprint = fp)) }
+                                        .padding(vertical = 8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(fp.uppercase(), color = if (isSelected) CyberBlack else CyberTextPrimary, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Anti-DPI & Packet Fragmentation Card
         item {
             Card(
                 colors = CardDefaults.cardColors(containerColor = CyberNavy),
@@ -1836,7 +2383,567 @@ fun SecurityScreen(viewModel: VpnViewModel) {
             ) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Filled.Memory, contentDescription = "Core", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Filled.Tune, contentDescription = "Fragment", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "تکه‌تکه‌کردن پکت‌ها (Anti-DPI / Fragment)" else if (appLanguage == "ru") "Фрагментация пакетов (Anti-DPI)" else "Anti-DPI Packet Fragmentation",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "فعال‌سازی مالتی‌پلکسر فرگمنت" else if (appLanguage == "ru") "Включить фрагментацию пакетов" else "Enable Handshake Fragmentation",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "تکه‌تکه‌کردن بسته ClientHello برای رد شدن از دیوار آتشین فیلترینگ شدید اپراتورها." else if (appLanguage == "ru") "Разделяет защищенный пакет ClientHello для нейтрализации систем DPI." else "Neutralizes SNI detectors by splitting initial secure handshakes.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.enableFragment,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(enableFragment = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    if (settings.enableFragment) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        EditField(if (appLanguage == "fa") "محدوده اندازه (بایت)" else "Size Range (bytes)", settings.fragmentSize) {
+                            viewModel.updateSecuritySettings(settings.copy(fragmentSize = it))
+                        }
+                        Spacer(modifier = Modifier.height(4.dp))
+                        EditField(if (appLanguage == "fa") "محدوده تاخیر (میلی‌ثانیه)" else "Delay Range (ms)", settings.fragmentInterval) {
+                            viewModel.updateSecuritySettings(settings.copy(fragmentInterval = it))
+                        }
+                    }
+                }
+            }
+        }
+
+        // System and Connection Shield Preferences Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Preferences", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "تنظیمات اتصال و اولویت‌ها" else if (appLanguage == "ru") "Системные предпочтения подключения" else "Connection & System Preferences",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+
+                    // Auto Connect on Boot
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "اتصال خودکار هنگام روشن شدن گوشی" else if (appLanguage == "ru") "Автоподключение при запуске устройства" else "Auto-Connect on Boot",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "اجرای خودکار تونل فیلترشکن هنگام روشن شدن سیستم‌عامل." else if (appLanguage == "ru") "Автоматически запускает защищенный туннель после загрузки ОС." else "Automatically start secure tunnel once the device boots up.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = autoConnectOnBoot,
+                            onCheckedChange = { autoConnectOnBoot = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Keep Alive Active
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "سپر فعال زنده نگه‌داشتن اتصال (Keep-Alive)" else if (appLanguage == "ru") "Активная защита соединения (Keep-Alive)" else "Connection Keep-Alive Shield",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "بررسی خودکار اتصال و برقراری مجدد در صورت قطعی‌های ناگهانی اپراتور." else if (appLanguage == "ru") "Мониторит падение туннеля и автоматически перестраивает связь." else "Monitors connection drops and rebuilds tunnel automatically.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = keepAliveActive,
+                            onCheckedChange = { keepAliveActive = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Speed in Status Notification
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "نمایش سرعت در بخش نوتیفیکیشن" else if (appLanguage == "ru") "Отображать скорость в Уведомлении" else "Show Speed in Status Bar",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "نمایش دائمی پهنای باند و میزان دانلود/آپلود در اعلان سیستم." else if (appLanguage == "ru") "Отображает текущую скорость скачивания и отдачи в строке уведомлений." else "Keeps active download and upload stats pinned on the status notification.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = speedInNotification,
+                            onCheckedChange = { speedInNotification = it },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(color = CyberCard, thickness = 1.dp)
+
+                    // Allow LAN (Share VPN)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = if (appLanguage == "fa") "اشتراک‌گذاری اینترنت (Allow LAN)" else if (appLanguage == "ru") "Раздача интернета (Allow LAN)" else "Allow LAN / Share VPN Connection",
+                                color = CyberTextPrimary,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Text(
+                                text = if (appLanguage == "fa") "اشتراک‌گذاری کانکشن فیلترشکن با لپ‌تاپ، تلویزیون هوشمند یا گوشی‌های دیگر در شبکه Wi-Fi." else if (appLanguage == "ru") "Позволяет другим устройствам сети (TV, PC, mobile) использовать данное подключение." else "Allow other local Wi-Fi devices (TV, PC, mobile) to use this VPN as SOCKS proxy.",
+                                color = CyberTextSecondary,
+                                fontSize = 10.sp
+                            )
+                        }
+                        Switch(
+                            checked = settings.allowLan,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(allowLan = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Connection Diagnostics & Leak Safeguards Card
+        item {
+            val autoPing by viewModel.autoPingEnabled.collectAsStateWithLifecycle()
+            val killSwitch by viewModel.killSwitchEnabled.collectAsStateWithLifecycle()
+            
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Security,
+                            contentDescription = "Leak Safeguards",
+                            tint = CyberPrimary,
+                            modifier = Modifier.size(22.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "محافظت نشت و ابزار تشخیصی" else if (appLanguage == "ru") "Диагностика и защита утечек" else "Connection Diagnostics & Leak Protection",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    // Active Auto-ping Diagnostic Toggle Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Speed,
+                                contentDescription = "Active Ping",
+                                tint = CyberPrimary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = if (appLanguage == "fa") "تشخیص کیفیت اتصال زنده (پینگ فعال)" else if (appLanguage == "ru") "Постоянная авто-диагностика (Пинг)" else "Active Diagnostics (Auto-Ping)",
+                                    color = CyberTextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (appLanguage == "fa") "اندازه‌گیری و همگام‌سازی خودکار تاخیر پاسخگویی سرورها برحسب میلی‌ثانیه." else if (appLanguage == "ru") "Регулярно пингует конфигурации для определения живой задержки." else "Periodically pings configurations every 20s to isolate live latencies.",
+                                    color = CyberTextSecondary,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = autoPing,
+                            onCheckedChange = { viewModel.setAutoPingEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+
+                    HorizontalDivider(
+                        color = CyberCard,
+                        thickness = 1.dp,
+                        modifier = Modifier.padding(vertical = 12.dp)
+                    )
+
+                    // Kill Switch Safeguard Toggle Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Block,
+                                contentDescription = "Kill Switch",
+                                tint = DangerRed,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Column {
+                                Text(
+                                    text = if (appLanguage == "fa") "کلید قطع اضطراری محافظتی" else if (appLanguage == "ru") "Аварийный выключатель блокировки (Kill Switch)" else "Censorship Tunnel Kill Switch",
+                                    color = CyberTextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Medium
+                                )
+                                Text(
+                                    text = if (appLanguage == "fa") "درصورت قطع اتصال تونل امن, تمام دسترسی به اینترنت را مسدود می‌کند تا از نشت داده‌ها جلوگیری کند." else if (appLanguage == "ru") "Блокирует незащищенный трафик интернета при обрыве туннеля VPN." else "Blocks all outbound unsecured traffic if secure tunnel drops.",
+                                    color = CyberTextSecondary,
+                                    fontSize = 10.sp
+                                )
+                            }
+                        }
+                        Switch(
+                            checked = killSwitch,
+                            onCheckedChange = { viewModel.setKillSwitchEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+                }
+            }
+        }
+
+        // Per-App Proxy (Split Tunneling) Card
+        item {
+            val perAppProxyEnabled by viewModel.perAppProxyEnabled.collectAsStateWithLifecycle()
+            val bypassIranAppsEnabled by viewModel.bypassIranAppsEnabled.collectAsStateWithLifecycle()
+            val appsList by viewModel.appsList.collectAsStateWithLifecycle()
+
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.Apps, contentDescription = "Per-App Proxy", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = if (appLanguage == "fa") "پراکسی برنامه‌ها" else if (appLanguage == "ru") "Прокси для приложений" else "Per-App Proxy (Split Tunnel)",
+                                color = CyberTextPrimary,
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 15.sp
+                            )
+                        }
+                        Switch(
+                            checked = perAppProxyEnabled,
+                            onCheckedChange = { viewModel.setPerAppProxyEnabled(it) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (appLanguage == "fa") "فقط برنامه‌های انتخاب شده را از فیلترشکن عبور دهید." else if (appLanguage == "ru") "Выбирайте приложения для отправки в туннель или прямого обхода." else "Selectively routing or bypassing specific apps on your device via secure tunnel corridors.",
+                        color = CyberTextSecondary,
+                        fontSize = 11.sp
+                    )
+
+                    if (perAppProxyEnabled) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        HorizontalDivider(color = CyberCard, thickness = 1.dp)
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        // Bypass Domestic Row
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = if (appLanguage == "fa") "دور زدن خودکار برنامه‌های داخلی" else if (appLanguage == "ru") "Обходить национальные приложения" else "Auto-Bypass Domestic Apps (Iran)",
+                                    color = CyberTextPrimary,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
+                                Text(
+                                    text = if (appLanguage == "fa") "اجرا برنامه‌های بانکی و اسنپ بدون فیلترشکن" else if (appLanguage == "ru") "Автоматический обход государственных, платежных и банковских приложений." else "Ensures local bank apps & Snapp execute clean without VPN interface interference.",
+                                    color = CyberTextSecondary,
+                                    fontSize = 10.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Switch(
+                                checked = bypassIranAppsEnabled,
+                                onCheckedChange = { viewModel.setBypassIranAppsEnabled(it) },
+                                colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "برنامه‌های نصب شده" else if (appLanguage == "ru") "Список приложений для прокси" else "Configured Application Routing Corridors",
+                            color = CyberPrimary,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        // Render app list
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            appsList.take(60).forEach { app ->
+                                val isDisabled = bypassIranAppsEnabled && app.isIranian
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(RoundedCornerShape(8.dp))
+                                        .background(if (isDisabled) CyberCard.copy(alpha = 0.4f) else CyberCard)
+                                        .clickable(enabled = !isDisabled) {
+                                            viewModel.toggleAppProxy(app.packageName)
+                                        }
+                                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(32.dp)
+                                                .clip(RoundedCornerShape(6.dp))
+                                                .background(CyberBlack),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            val iconLetter = app.name.take(1)
+                                            Text(iconLetter, color = CyberPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                        }
+                                        Spacer(modifier = Modifier.width(10.dp))
+                                        Column {
+                                            Text(
+                                                text = app.name,
+                                                color = if (isDisabled) CyberTextSecondary else CyberTextPrimary,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.SemiBold
+                                            )
+                                            Text(
+                                                text = if (isDisabled) {
+                                                    if (appLanguage == "fa") "دور زدن اجباری بانک" else if (appLanguage == "ru") "Обход банковского софта" else "Forced Bypass (Local App)"
+                                                } else if (app.isProxied) {
+                                                    if (appLanguage == "fa") "مسیر عبور: تونل امن Z2ray" else if (appLanguage == "ru") "Прокси туннель Z2ray" else "Route: Tunnel Proxy Corridor"
+                                                } else {
+                                                    if (appLanguage == "fa") "مسیر عبور: اینترنت مستقیم" else if (appLanguage == "ru") "Прямой интернет" else "Route: Direct Internet"
+                                                },
+                                                color = if (app.isProxied && !isDisabled) SecureGreen else CyberTextSecondary,
+                                                fontSize = 10.sp
+                                            )
+                                        }
+                                    }
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Checkbox(
+                                        checked = app.isProxied && !isDisabled,
+                                        onCheckedChange = { if (!isDisabled) viewModel.toggleAppProxy(app.packageName) },
+                                        enabled = !isDisabled,
+                                        colors = CheckboxDefaults.colors(checkedColor = CyberPrimary, uncheckedColor = CyberTextSecondary)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Routing Mode Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(Icons.Filled.Settings, contentDescription = "Routing", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = if (appLanguage == "fa") "موتور هوشمند مدیریت مسیر" else if (appLanguage == "ru") "Умная маршрутизация трафика" else "Intelligent Routing Rule Engine",
+                            color = CyberTextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                    }
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    val routingModes = listOf("Bypass Iran", "Global Proxy", "Direct (Disabled)")
+                    routingModes.forEach { mode ->
+                        val selected = settings.routingMode == mode
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.updateSecuritySettings(settings.copy(routingMode = mode))
+                                }
+                                .padding(vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(mode, color = CyberTextPrimary, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
+                                val desc = when (mode) {
+                                    "Bypass Iran" -> "Bypasses domestic websites (.ir) so banking/shopping flows stay direct."
+                                    "Global Proxy" -> "Routes all applications and IPs through the server tunnel interface."
+                                    else -> "Temporarily disables tunneling client features."
+                                }
+                                Text(desc, color = CyberTextSecondary, fontSize = 10.sp)
+                            }
+                            RadioButton(
+                                selected = selected,
+                                onClick = { viewModel.updateSecuritySettings(settings.copy(routingMode = mode)) },
+                                colors = RadioButtonDefaults.colors(selectedColor = CyberPrimary)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        // Custom Routing Rule Editor Card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Filled.List, contentDescription = "Custom Rules", tint = CyberPrimary, modifier = Modifier.size(22.dp))
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text("Custom Routing Rules", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                        }
+                        Text("Import", color = CyberPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { showRoutingImportDialog = true })
+                    }
+                    Text("Format: DOMAIN,direct,domain:example.com or IP,block,1.2.3.4/32. Rules are applied before built-in Iran/private rules.", color = CyberTextSecondary, fontSize = 10.sp)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                        Text("Block ads/malware via geosite:category-ads-all", color = CyberTextPrimary, fontSize = 12.sp)
+                        Switch(
+                            checked = settings.blockAds,
+                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(blockAds = it)) },
+                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
+                        )
+                    }
+                    if (customRoutingRules.isEmpty()) {
+                        Text("No custom rules yet.", color = CyberTextSecondary, fontSize = 11.sp)
+                    } else {
+                        customRoutingRules.take(8).forEach { rule ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(CyberCard)
+                                    .padding(10.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(rule.name, color = CyberTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                    Text("${rule.type} → ${rule.outboundTag} • ${rule.values.joinToString(", ").take(80)}", color = CyberTextSecondary, fontSize = 10.sp)
+                                }
+                                Switch(checked = rule.enabled, onCheckedChange = { viewModel.toggleCustomRoutingRule(rule.id) }, colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary))
+                                IconButton(onClick = { viewModel.deleteCustomRoutingRule(rule.id) }) {
+                                    Icon(Icons.Filled.Delete, contentDescription = "Delete rule", tint = DangerRed, modifier = Modifier.size(18.dp))
+                                }
+                            }
+                        }
+                        if (customRoutingRules.size > 8) Text("+${customRoutingRules.size - 8} more rules", color = CyberTextSecondary, fontSize = 10.sp)
+                    }
+                }
+            }
+        }
+
+        // Core & Assets card
+        item {
+            Card(
+                colors = CardDefaults.cardColors(containerColor = CyberNavy),
+                shape = RoundedCornerShape(16.dp),
+                border = borderStroke(1.dp, CyberCard)
+            ) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Filled.Info, contentDescription = "Core", tint = CyberPrimary, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (appLanguage == "fa") "هسته و فایل‌های مسیریابی" else "Core & Routing Assets",
@@ -2029,593 +3136,8 @@ fun SecurityScreen(viewModel: VpnViewModel) {
                 }
             }
         }
-
-        // Connection Diagnostics & Leak Safeguards Card
-        item {
-            val autoPing by viewModel.autoPingEnabled.collectAsStateWithLifecycle()
-            val killSwitch by viewModel.killSwitchEnabled.collectAsStateWithLifecycle()
-            
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Shield,
-                            contentDescription = "Leak Safeguards",
-                            tint = CyberPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (appLanguage == "fa") "محافظت نشت و ابزار تشخیصی" else "Connection Diagnostics & Leak Protection",
-                            color = CyberTextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(14.dp))
-
-                    // Active Auto-ping Diagnostic Toggle Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Speed,
-                                contentDescription = "Active Ping",
-                                tint = CyberPrimary,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = if (appLanguage == "fa") "تشخیص کیفیت اتصال زنده (پینگ فعال)" else "Active Diagnostics (Auto-Ping)",
-                                    color = CyberTextPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = if (appLanguage == "fa") "اندازه‌گیری و همگام‌سازی خودکار تاخیر پاسخگویی سرورها برحسب میلی‌ثانیه." else "Periodically pings configurations every 20s to isolate live latencies.",
-                                    color = CyberTextSecondary,
-                                    fontSize = 10.sp
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = autoPing,
-                            onCheckedChange = { viewModel.setAutoPingEnabled(it) },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                        )
-                    }
-
-                    HorizontalDivider(
-                        color = CyberCard,
-                        thickness = 1.dp,
-                        modifier = Modifier.padding(vertical = 12.dp)
-                    )
-
-                    // Kill Switch Safeguard Toggle Row
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.Block,
-                                contentDescription = "Kill Switch",
-                                tint = DangerRed,
-                                modifier = Modifier.size(18.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Column {
-                                Text(
-                                    text = if (appLanguage == "fa") "کلید قطع اضطراری محافظتی" else "Censorship Tunnel Kill Switch",
-                                    color = CyberTextPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Medium
-                                )
-                                Text(
-                                    text = if (appLanguage == "fa") "درصورت قطع اتصال تونل امن، تمام دسترسی به اینترنت را مسدود می‌کند تا از نشت داده‌ها جلوگیری کند." else "Blocks all outbound unsecured traffic if secure tunnel drops.",
-                                    color = CyberTextSecondary,
-                                    fontSize = 10.sp
-                                )
-                            }
-                        }
-                        Switch(
-                            checked = killSwitch,
-                            onCheckedChange = { viewModel.setKillSwitchEnabled(it) },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                        )
-                    }
-                }
-            }
-        }
-
-        // Per-App Proxy (Split Tunneling) Card
-        item {
-            val perAppProxyEnabled by viewModel.perAppProxyEnabled.collectAsStateWithLifecycle()
-            val bypassIranAppsEnabled by viewModel.bypassIranAppsEnabled.collectAsStateWithLifecycle()
-            val appsList by viewModel.appsList.collectAsStateWithLifecycle()
-
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Apps, contentDescription = "Per-App Proxy", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = if (appLanguage == "fa") "پراکسی برنامه‌ها" else "Per-App Proxy (Split Tunnel)",
-                                color = CyberTextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 15.sp
-                            )
-                        }
-                        Switch(
-                            checked = perAppProxyEnabled,
-                            onCheckedChange = { viewModel.setPerAppProxyEnabled(it) },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                        )
-                    }
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = if (appLanguage == "fa") "فقط برنامه‌های انتخاب شده را از فیلترشکن عبور دهید." else "Selectively routing or bypassing specific apps on your device via secure tunnel corridors.",
-                        color = CyberTextSecondary,
-                        fontSize = 11.sp
-                    )
-
-                    if (perAppProxyEnabled) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        HorizontalDivider(color = CyberCard, thickness = 1.dp)
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        // Bypass Domestic Row
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    text = if (appLanguage == "fa") "دور زدن خودکار برنامه‌های داخلی" else "Auto-Bypass Domestic Apps (Iran)",
-                                    color = CyberTextPrimary,
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = if (appLanguage == "fa") "اجرا برنامه‌های بانکی و اسنپ بدون فیلترشکن" else "Ensures local bank apps & Snapp execute clean without VPN interface interference.",
-                                    color = CyberTextSecondary,
-                                    fontSize = 10.sp
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Switch(
-                                checked = bypassIranAppsEnabled,
-                                onCheckedChange = { viewModel.setBypassIranAppsEnabled(it) },
-                                colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = if (appLanguage == "fa") "برنامه‌های نصب شده" else "Configured Application Routing Corridors",
-                            color = CyberPrimary,
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Render app list
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            appsList.forEach { app ->
-                                val isDisabled = bypassIranAppsEnabled && app.isIranian
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(if (isDisabled) CyberCard.copy(alpha = 0.4f) else CyberCard)
-                                        .clickable(enabled = !isDisabled) {
-                                            viewModel.toggleAppProxy(app.packageName)
-                                        }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(32.dp)
-                                                .clip(RoundedCornerShape(6.dp))
-                                                .background(CyberBlack),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            val iconLetter = app.name.take(1)
-                                            Text(iconLetter, color = CyberPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                        }
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
-                                            Text(
-                                                text = app.name,
-                                                color = if (isDisabled) CyberTextSecondary else CyberTextPrimary,
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold
-                                            )
-                                            Text(
-                                                text = if (isDisabled) {
-                                                    if (appLanguage == "fa") "دور زدن اجباری بانک" else "Forced Bypass (Local App)"
-                                                } else if (app.isProxied) {
-                                                    if (appLanguage == "fa") "مسیر عبور: تونل امن Z2ray" else "Route: Tunnel Proxy Corridor"
-                                                } else {
-                                                    if (appLanguage == "fa") "مسیر عبور: اینترنت مستقیم" else "Route: Direct Internet"
-                                                },
-                                                color = if (app.isProxied && !isDisabled) SecureGreen else CyberTextSecondary,
-                                                fontSize = 10.sp
-                                            )
-                                        }
-                                    }
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Checkbox(
-                                        checked = app.isProxied && !isDisabled,
-                                        onCheckedChange = { if (!isDisabled) viewModel.toggleAppProxy(app.packageName) },
-                                        enabled = !isDisabled,
-                                        colors = CheckboxDefaults.colors(checkedColor = CyberPrimary, uncheckedColor = CyberTextSecondary)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        // Routing Mode Card
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.Security, contentDescription = "Routing", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Intelligent Routing Rule Engine", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val routingModes = listOf("Bypass Iran", "Global Proxy", "Direct (Disabled)")
-                    routingModes.forEach { mode ->
-                        val selected = settings.routingMode == mode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.updateSecuritySettings(settings.copy(routingMode = mode))
-                                }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(mode, color = CyberTextPrimary, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
-                                val desc = when (mode) {
-                                    "Bypass Iran" -> "Bypasses domestic websites (.ir) so banking/shopping flows stay direct."
-                                    "Global Proxy" -> "Routes all applications and IPs through the server tunnel interface."
-                                    else -> "Temporarily disables tunneling client features."
-                                }
-                                Text(desc, color = CyberTextSecondary, fontSize = 10.sp)
-                            }
-                            RadioButton(
-                                selected = selected,
-                                onClick = { viewModel.updateSecuritySettings(settings.copy(routingMode = mode)) },
-                                colors = RadioButtonDefaults.colors(selectedColor = CyberPrimary)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Custom Routing Rule Editor Card
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.Rule, contentDescription = "Custom Rules", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Custom Routing Rules", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                        Text("Import", color = CyberPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.clickable { showRoutingImportDialog = true })
-                    }
-                    Text("Format: DOMAIN,direct,domain:example.com or IP,block,1.2.3.4/32. Rules are applied before built-in Iran/private rules.", color = CyberTextSecondary, fontSize = 10.sp)
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                        Text("Block ads/malware via geosite:category-ads-all", color = CyberTextPrimary, fontSize = 12.sp)
-                        Switch(
-                            checked = settings.blockAds,
-                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(blockAds = it)) },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                        )
-                    }
-                    if (customRoutingRules.isEmpty()) {
-                        Text("No custom rules yet.", color = CyberTextSecondary, fontSize = 11.sp)
-                    } else {
-                        customRoutingRules.take(8).forEach { rule ->
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .background(CyberCard)
-                                    .padding(10.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(rule.name, color = CyberTextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                                    Text("${rule.type} → ${rule.outboundTag} • ${rule.values.joinToString(", ").take(80)}", color = CyberTextSecondary, fontSize = 10.sp)
-                                }
-                                Switch(checked = rule.enabled, onCheckedChange = { viewModel.toggleCustomRoutingRule(rule.id) }, colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary))
-                                IconButton(onClick = { viewModel.deleteCustomRoutingRule(rule.id) }) {
-                                    Icon(Icons.Filled.Delete, contentDescription = "Delete rule", tint = DangerRed, modifier = Modifier.size(18.dp))
-                                }
-                            }
-                        }
-                        if (customRoutingRules.size > 8) Text("+${customRoutingRules.size - 8} more rules", color = CyberTextSecondary, fontSize = 10.sp)
-                    }
-                }
-            }
-        }
-
-        // SNI / Stealth Overrides Card
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.AutoMirrored.Filled.Input, contentDescription = "SNI Stealth", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Stealth SNI (Active Payload Cloaking)", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    }
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "Manipulates the TLS ClientHello Server Name Indication (SNI) header to bypass deep packet filters on Irancell networks.",
-                        color = CyberTextSecondary,
-                        fontSize = 10.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    var inputSni by remember(settings.stealthSnd) { mutableStateOf(settings.stealthSnd) }
-
-                    OutlinedTextField(
-                        value = inputSni,
-                        onValueChange = {
-                            inputSni = it
-                            viewModel.updateSecuritySettings(settings.copy(stealthSnd = it))
-                        },
-                        label = { Text("Stealth SNI Overrides", color = CyberTextSecondary, fontSize = 12.sp) },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = CyberPrimary,
-                            unfocusedBorderColor = CyberCard,
-                            focusedTextColor = CyberTextPrimary,
-                            unfocusedTextColor = CyberTextPrimary
-                        ),
-                        shape = RoundedCornerShape(8.dp)
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text("Popular bypass SNIs: images.apple.com, assets.github.com, speedtest.net", color = CyberPrimary, fontSize = 9.sp, fontWeight = FontWeight.Medium)
-                }
-            }
-        }
-
-        // Anti-DPI Fragment Packets Settings
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Filled.ViewModule, contentDescription = "Fragment", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Anti-DPI Packet Fragmentation", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                        Switch(
-                            checked = settings.enableFragment,
-                            onCheckedChange = { viewModel.updateSecuritySettings(settings.copy(enableFragment = it)) },
-                            colors = SwitchDefaults.colors(checkedThumbColor = CyberBlack, checkedTrackColor = CyberPrimary)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Text(
-                        "Splits secure ClientHello handshake TLS records into segments which neutralizes Iranian SNI detection scanners.",
-                        color = CyberTextSecondary,
-                        fontSize = 11.sp
-                    )
-
-                    if (settings.enableFragment) {
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            var sizeVal by remember(settings.fragmentSize) { mutableStateOf(settings.fragmentSize) }
-                            var intervalVal by remember(settings.fragmentInterval) { mutableStateOf(settings.fragmentInterval) }
-
-                            OutlinedTextField(
-                                value = sizeVal,
-                                onValueChange = {
-                                    sizeVal = it
-                                    viewModel.updateSecuritySettings(settings.copy(fragmentSize = it))
-                                },
-                                label = { Text("Size Range (bytes)", fontSize = 10.sp, color = CyberTextSecondary) },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = CyberPrimary,
-                                    unfocusedBorderColor = CyberCard,
-                                    focusedTextColor = CyberTextPrimary,
-                                    unfocusedTextColor = CyberTextPrimary
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            )
-
-                            OutlinedTextField(
-                                value = intervalVal,
-                                onValueChange = {
-                                    intervalVal = it
-                                    viewModel.updateSecuritySettings(settings.copy(fragmentInterval = it))
-                                },
-                                label = { Text("Delay Range (ms)", fontSize = 10.sp, color = CyberTextSecondary) },
-                                modifier = Modifier.weight(1f),
-                                singleLine = true,
-                                colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = CyberPrimary,
-                                    unfocusedBorderColor = CyberCard,
-                                    focusedTextColor = CyberTextPrimary,
-                                    unfocusedTextColor = CyberTextPrimary
-                                ),
-                                shape = RoundedCornerShape(8.dp),
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Secure DNS Over HTTPS Providers Selection
-        item {
-            Card(
-                colors = CardDefaults.cardColors(containerColor = CyberNavy),
-                shape = RoundedCornerShape(16.dp),
-                border = borderStroke(1.dp, CyberCard)
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Icon(Icons.Filled.SettingsInputHdmi, contentDescription = "DoH DNS", tint = CyberPrimary, modifier = Modifier.size(22.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Secure DNS & DNS-over-HTTPS", color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                    }
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    val dnsModes = listOf("Cloudflare DoH", "Google DoH", "Shecan Anti-Sanction", "System DNS")
-                    dnsModes.forEach { mode ->
-                        val selected = settings.dnsMode == mode
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    viewModel.updateSecuritySettings(settings.copy(dnsMode = mode))
-                                }
-                                .padding(vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(mode, color = CyberTextPrimary, fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal, fontSize = 13.sp)
-                                val desc = when (mode) {
-                                    "Cloudflare DoH" -> "Encrypted queries to Cloudflare securely (highly unblockable)."
-                                    "Google DoH" -> "Queries Google DoH endpoints anonymously."
-                                    "Shecan Anti-Sanction" -> "Popular Iranian DNS which bypasses foreign tech sanctions."
-                                    else -> "Requests default local cellular network routers."
-                                }
-                                Text(desc, color = CyberTextSecondary, fontSize = 10.sp)
-                            }
-                            RadioButton(
-                                selected = selected,
-                                onClick = { viewModel.updateSecuritySettings(settings.copy(dnsMode = mode)) },
-                                colors = RadioButtonDefaults.colors(selectedColor = CyberPrimary)
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
-
-    if (showRoutingImportDialog) {
-        AlertDialog(
-            onDismissRequest = { showRoutingImportDialog = false },
-            title = { Text("Import Custom Routing Rules", color = CyberTextPrimary, fontWeight = FontWeight.Bold) },
-            text = {
-                OutlinedTextField(
-                    value = routingImportText,
-                    onValueChange = { routingImportText = it },
-                    label = { Text("DOMAIN,direct,domain:example.com") },
-                    minLines = 5,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = CyberPrimary,
-                        unfocusedBorderColor = CyberCard,
-                        focusedTextColor = CyberTextPrimary,
-                        unfocusedTextColor = CyberTextPrimary
-                    )
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    viewModel.importCustomRoutingRules(routingImportText)
-                    routingImportText = ""
-                    showRoutingImportDialog = false
-                }) { Text("IMPORT", color = CyberPrimary) }
-            },
-            dismissButton = { TextButton(onClick = { showRoutingImportDialog = false }) { Text("CANCEL", color = CyberTextSecondary) } },
-            containerColor = CyberNavy,
-            shape = RoundedCornerShape(16.dp)
-        )
-    }
-}
-
-@Composable
-fun SubscriptionScreen(viewModel: VpnViewModel) {
+}fun SubscriptionScreen(viewModel: VpnViewModel) {
     val subs by viewModel.subscriptions.collectAsStateWithLifecycle()
     var subName by remember { mutableStateOf("") }
     var subUrl by remember { mutableStateOf("") }

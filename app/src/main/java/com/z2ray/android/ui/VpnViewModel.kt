@@ -41,7 +41,18 @@ data class SecuritySettings(
     val stealthSnd: String = "assets.github.com",
     val activeFakeDns: Boolean = true,
     val blockAds: Boolean = true,
-    val routingDnsStrategy: String = "IPIfNonMatch"
+    val routingDnsStrategy: String = "IPIfNonMatch",
+    val allowLan: Boolean = false,
+    val localSocksPort: String = "10808",
+    val enableSniffing: Boolean = true,
+    val remoteDns: String = "https://1.1.1.1/dns-query",
+    val directDns: String = "1.1.1.1",
+    val enableFakeDns: Boolean = true,
+    val enableMux: Boolean = false,
+    val muxConcurrency: String = "8",
+    val logLevel: String = "warning",
+    val allowInsecure: Boolean = false,
+    val fingerprint: String = "chrome"
 )
 
 data class SpeedDataPoint(
@@ -272,26 +283,41 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun loadAppsList() {
-        val defaultApps = listOf(
-            AppConfigItem("com.instagram.android", "Instagram", true, false),
-            AppConfigItem("org.telegram.messenger", "Telegram Messenger", true, false),
-            AppConfigItem("com.google.android.youtube", "YouTube", true, false),
-            AppConfigItem("com.android.chrome", "Google Chrome", true, false),
-            AppConfigItem("com.whatsapp", "WhatsApp", true, false),
-            AppConfigItem("com.spotify.music", "Spotify", true, false),
-            AppConfigItem("ir.snapp.passenger", "Snapp! Passenger Taxi", false, true),
-            AppConfigItem("cab.snapp.driver", "Snapp! Driver App", false, true),
-            AppConfigItem("ir.divar", "Divar Classified Market", false, true),
-            AppConfigItem("ir.rubika.app", "Rubika Super App", false, true),
-            AppConfigItem("com.shaparak.mobile", "Shaparak Payments Gate", false, true),
-            AppConfigItem("com.melli.key", "Melli Mobile Bank", false, true)
-        )
-        val loadedList = defaultApps.map { app ->
-            val isProxiedDefault = if (app.isIranian) false else app.isProxied
-            val savedProxyState = prefs.getBoolean("app_proxy_${app.packageName}", isProxiedDefault)
-            app.copy(isProxied = savedProxyState)
+        viewModelScope.launch(Dispatchers.IO) {
+            val app = getApplication<Application>()
+            val pm = app.packageManager
+            val packages = runCatching {
+                pm.getInstalledPackages(0)
+            }.getOrDefault(emptyList())
+
+            val domesticKeywords = listOf(
+                "ir.", "snapp", "divar", "rubika", "shaparak", "melli", "tejarat", "saman", 
+                "shahr", "sadad", "tap30", "zarinpal", "bamilo", "digikala", "ap", 
+                "asandardakht", "bank", "mellat", "keshavarzi", "pasargad", "ansar", "parsian"
+            )
+
+            val loadedList = packages
+                .filter { pkg ->
+                    pm.getLaunchIntentForPackage(pkg.packageName) != null
+                }
+                .map { pkg ->
+                    val packageName = pkg.packageName
+                    val name = pkg.applicationInfo.loadLabel(pm).toString()
+                    val isIranian = domesticKeywords.any { packageName.contains(it, ignoreCase = true) || name.contains(it, ignoreCase = true) }
+                    
+                    val isProxiedDefault = !isIranian
+                    val savedProxyState = prefs.getBoolean("app_proxy_$packageName", isProxiedDefault)
+                    AppConfigItem(
+                        packageName = packageName,
+                        name = name,
+                        isProxied = savedProxyState,
+                        isIranian = isIranian
+                    )
+                }
+                .sortedBy { it.name.lowercase() }
+
+            _appsList.value = loadedList
         }
-        _appsList.value = loadedList
     }
 
     fun toggleAppProxy(packageName: String) {
@@ -461,7 +487,18 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
             stealthSnd = prefs.getString("stealth_snd", "assets.github.com") ?: "assets.github.com",
             activeFakeDns = prefs.getBoolean("active_fake_dns", true),
             blockAds = prefs.getBoolean("block_ads", true),
-            routingDnsStrategy = prefs.getString("routing_dns_strategy", "IPIfNonMatch") ?: "IPIfNonMatch"
+            routingDnsStrategy = prefs.getString("routing_dns_strategy", "IPIfNonMatch") ?: "IPIfNonMatch",
+            allowLan = prefs.getBoolean("allow_lan", false),
+            localSocksPort = prefs.getString("local_socks_port", "10808") ?: "10808",
+            enableSniffing = prefs.getBoolean("enable_sniffing", true),
+            remoteDns = prefs.getString("remote_dns", "https://1.1.1.1/dns-query") ?: "https://1.1.1.1/dns-query",
+            directDns = prefs.getString("direct_dns", "1.1.1.1") ?: "1.1.1.1",
+            enableFakeDns = prefs.getBoolean("enable_fakedns", true),
+            enableMux = prefs.getBoolean("enable_mux", false),
+            muxConcurrency = prefs.getString("mux_concurrency", "8") ?: "8",
+            logLevel = prefs.getString("log_level", "warning") ?: "warning",
+            allowInsecure = prefs.getBoolean("allow_insecure_connections", false),
+            fingerprint = prefs.getString("fingerprint", "chrome") ?: "chrome"
         )
     }
 
@@ -479,6 +516,17 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
             putBoolean("active_fake_dns", newSettings.activeFakeDns)
             putBoolean("block_ads", newSettings.blockAds)
             putString("routing_dns_strategy", newSettings.routingDnsStrategy)
+            putBoolean("allow_lan", newSettings.allowLan)
+            putString("local_socks_port", newSettings.localSocksPort)
+            putBoolean("enable_sniffing", newSettings.enableSniffing)
+            putString("remote_dns", newSettings.remoteDns)
+            putString("direct_dns", newSettings.directDns)
+            putBoolean("enable_fakedns", newSettings.enableFakeDns)
+            putBoolean("enable_mux", newSettings.enableMux)
+            putString("mux_concurrency", newSettings.muxConcurrency)
+            putString("log_level", newSettings.logLevel)
+            putBoolean("allow_insecure_connections", newSettings.allowInsecure)
+            putString("fingerprint", newSettings.fingerprint)
             apply()
         }
         viewModelScope.launch {
@@ -591,6 +639,13 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ACTIONS
+    fun addManualServer(server: VpnServer) {
+        viewModelScope.launch {
+            repo.insertServer(server)
+            repo.log("SERVER", "SUCCESS", "Created manual server: ${server.name}")
+        }
+    }
+
     fun addServerFromLink(link: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {
             val parsed = VpnParser.parseMany(link, "Manual Link")
@@ -799,7 +854,12 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
             routingMode = securitySettings.value.routingMode,
             customRules = _customRoutingRules.value,
             blockAds = securitySettings.value.blockAds,
-            domainStrategy = securitySettings.value.routingDnsStrategy
+            domainStrategy = securitySettings.value.routingDnsStrategy,
+            enableFragment = securitySettings.value.enableFragment,
+            fragmentSize = securitySettings.value.fragmentSize,
+            fragmentInterval = securitySettings.value.fragmentInterval,
+            fragmentPackets = securitySettings.value.fragmentPackets,
+            allowLan = securitySettings.value.allowLan
         )
         val allowedApps = if (_perAppProxyEnabled.value) {
             ArrayList(_appsList.value.filter { it.isProxied }.map { it.packageName })

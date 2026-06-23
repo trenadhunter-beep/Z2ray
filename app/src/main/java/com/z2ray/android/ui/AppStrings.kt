@@ -18,6 +18,7 @@ interface Strings {
     val latencyLabel: String
     val encryptionLabel: String
     val downloadLabel: String
+    val uploadLabel: String
     val modeLabel: String
     val noServerSelected: String
     val tapChooseConfig: String
@@ -92,7 +93,7 @@ interface Strings {
 object EnglishStrings : Strings {
     override val tabHome = "Home"
     override val tabConfigs = "Configs"
-    override val tabSecurity = "Security"
+    override val tabSecurity = "Settings"
     override val tabSubs = "Subs"
     override val tabConsole = "Console"
     
@@ -103,6 +104,7 @@ object EnglishStrings : Strings {
     override val latencyLabel = "LATENCY"
     override val encryptionLabel = "ENCRYPTION"
     override val downloadLabel = "DOWNLOAD"
+    override val uploadLabel = "UPLOAD"
     override val modeLabel = "MODE"
     override val noServerSelected = "No Server Selected"
     override val tapChooseConfig = "Tap to choose a config"
@@ -185,6 +187,7 @@ object PersianStrings : Strings {
     override val latencyLabel = "تاخیر (پینگ)"
     override val encryptionLabel = "رمزنگاری"
     override val downloadLabel = "دانلود"
+    override val uploadLabel = "آپلود"
     override val modeLabel = "حالت"
     override val noServerSelected = "کانفیگی انتخاب نشده است"
     override val tapChooseConfig = "برای انتخاب کانفیگ لمس کنید"
@@ -256,7 +259,7 @@ object PersianStrings : Strings {
 object RussianStrings : Strings {
     override val tabHome = "Главная"
     override val tabConfigs = "Конфиги"
-    override val tabSecurity = "Защита"
+    override val tabSecurity = "Настройки"
     override val tabSubs = "Подписки"
     override val tabConsole = "Консоль"
     
@@ -267,6 +270,7 @@ object RussianStrings : Strings {
     override val latencyLabel = "ЗАДЕРЖКА"
     override val encryptionLabel = "ШИФРОВАНИЕ"
     override val downloadLabel = "СКАЧАТЬ"
+    override val uploadLabel = "ОТПРАВКА"
     override val modeLabel = "РЕЖИМ"
     override val noServerSelected = "Сервер не выбран"
     override val tapChooseConfig = "Выберите конфиг для подключения"
