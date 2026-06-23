@@ -302,7 +302,7 @@ class VpnViewModel(application: Application) : AndroidViewModel(application) {
                 }
                 .map { pkg ->
                     val packageName = pkg.packageName
-                    val name = pkg.applicationInfo.loadLabel(pm).toString()
+                    val name = pkg.applicationInfo?.loadLabel(pm)?.toString() ?: packageName
                     val isIranian = domesticKeywords.any { packageName.contains(it, ignoreCase = true) || name.contains(it, ignoreCase = true) }
                     
                     val isProxiedDefault = !isIranian

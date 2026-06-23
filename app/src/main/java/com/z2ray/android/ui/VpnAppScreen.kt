@@ -3137,7 +3137,10 @@ fun SecurityScreen(viewModel: VpnViewModel) {
             }
         }
     }
-}fun SubscriptionScreen(viewModel: VpnViewModel) {
+}
+
+@Composable
+fun SubscriptionScreen(viewModel: VpnViewModel) {
     val subs by viewModel.subscriptions.collectAsStateWithLifecycle()
     var subName by remember { mutableStateOf("") }
     var subUrl by remember { mutableStateOf("") }
