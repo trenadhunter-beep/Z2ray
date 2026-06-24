@@ -9,56 +9,99 @@ on:
 
 jobs:
   build:
+    name: Build App
     runs-on: ubuntu-latest
+    env:
+      CORE_FLAVOR: xray
 
     steps:
-      - name: Checkout
+      - name: Checkout Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Setup JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
+          distribution: temurin
           java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools"
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.5.1'
+          cache-disabled: false
 
-      - name: Grant execute permission
-        run: chmod +x gradlew
-
-      - name: Build Release APKs (all ABIs + Universal)
+      - name: Create empty local secrets env
         run: |
-          ./gradlew clean assembleRelease \
-            -Pandroid.injected.signing.store.file=${{ secrets.KEYSTORE_PATH }} \
-            -Pandroid.injected.signing.store.password=${{ secrets.KEYSTORE_PASSWORD }} \
-            -Pandroid.injected.signing.key.alias=${{ secrets.KEY_ALIAS }} \
-            -Pandroid.injected.signing.key.password=${{ secrets.KEY_PASSWORD }}
+          if [ -f .env.example ]; then
+            cp .env.example .env
+          else
+            echo "API_KEY=" > .env
+          fi
 
-      - name: List built APKs
-        run: find app/build/outputs/apk -name "*.apk" | sort
+      - name: Download Android core AAR
+        run: |
+          mkdir -p app/libs
+          CORE_URL="https://github.com/2dust/AndroidLibXrayLite/releases/latest/download/libv2ray.aar"
+          echo "Downloading core AAR..."
+          curl -L --retry 3 --fail -o app/libs/libv2ray.aar "$CORE_URL"
+
+      - name: Build APKs
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          STORE_PASSWORD: ${{ secrets.STORE_PASSWORD || secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASSWORD" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASSWORD" ]; then
+            echo "Signing secrets are present. Building signed release APKs..."
+            echo "$KEYSTORE_BASE64" | base64 -d > release-keystore.jks
+            export KEYSTORE_PATH="${{ github.workspace }}/release-keystore.jks"
+            export STORE_PASSWORD="$STORE_PASSWORD"
+            export KEY_ALIAS="$KEY_ALIAS"
+            export KEY_PASSWORD="$KEY_PASSWORD"
+            gradle --stacktrace -PCORE_FLAVOR=$CORE_FLAVOR clean assembleRelease
+            echo "SIGNED_BUILD=true" >> $GITHUB_ENV
+          else
+            echo "Signing secrets are missing. Building debug APKs..."
+            gradle --stacktrace -PCORE_FLAVOR=$CORE_FLAVOR clean assembleDebug
+            echo "SIGNED_BUILD=false" >> $GITHUB_ENV
+          fi
+
+      - name: Collect APKs
+        run: |
+          mkdir -p release_artifacts
+          if [ "$SIGNED_BUILD" = "true" ]; then
+            find app/build/outputs/apk/release -type f -name "*.apk" -exec cp {} release_artifacts/ \;
+          else
+            find app/build/outputs/apk/debug -type f -name "*.apk" -exec cp {} release_artifacts/ \;
+          fi
+          ls -lh release_artifacts
 
       - name: Upload all APKs as artifacts
         uses: actions/upload-artifact@v4
         with:
           name: Z2ray-APKs
-          path: app/build/outputs/apk/release/*.apk
+          path: release_artifacts/*
           retention-days: 30
 
-      # Optional: Create GitHub Release and attach APKs (when tag is pushed)
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') && env.SIGNED_BUILD == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
           name: Z2ray ${{ github.ref_name }}
           draft: false
           prerelease: false
-          files: |
-            app/build/outputs/apk/release/Z2ray_*_arm64-v8a.apk
-            app/build/outputs/apk/release/Z2ray_*_armeabi-v7a.apk
-            app/build/outputs/apk/release/Z2ray_*_x86.apk
-            app/build/outputs/apk/release/Z2ray_*_x86_64.apk
-            app/build/outputs/apk/release/Z2ray_*_universal.apk
+          files: release_artifacts/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
