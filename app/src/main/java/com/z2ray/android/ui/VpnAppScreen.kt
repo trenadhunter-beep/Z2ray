@@ -126,7 +126,7 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
                             fontFamily = FontFamily.SansSerif
                         )
                         Text(
-                            ,
+                            "Android Xray Client",
                             color = CyberPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
