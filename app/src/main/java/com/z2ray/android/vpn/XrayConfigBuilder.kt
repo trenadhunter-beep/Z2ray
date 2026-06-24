@@ -415,29 +415,7 @@ object XrayConfigBuilder {
             put("outboundTag", "direct")
         })
 
-        if (routingMode == "Bypass Iran") {
-            rules.put(JSONObject().apply {
-                put("type", "field")
-                put("domain", JSONArray()
-                    .put("regexp:.*\\.ir$")
-                    .put("geosite:ir")
-                    .put("geosite:private"))
-                put("outboundTag", "direct")
-            })
-            rules.put(JSONObject().apply {
-                put("type", "field")
-                put("ip", JSONArray().put("geoip:ir"))
-                put("outboundTag", "direct")
-            })
-        }
-
-        if (routingMode.startsWith("Direct")) {
-            rules.put(JSONObject().apply {
-                put("type", "field")
-                put("network", "tcp,udp")
-                put("outboundTag", "direct")
-            })
-        }
+        // Only Global Proxy mode is supported - no Iran bypass or direct mode rules
 
         // Basic ad/malware blocklist when geosite assets are available.
         if (blockAds) {

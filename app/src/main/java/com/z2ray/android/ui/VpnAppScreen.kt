@@ -126,7 +126,7 @@ fun VpnAppScreen(viewModel: VpnViewModel, modifier: Modifier = Modifier) {
                             fontFamily = FontFamily.SansSerif
                         )
                         Text(
-                            "Android Xray Client",
+                            ,
                             color = CyberPrimary,
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Medium
@@ -533,7 +533,7 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -577,7 +577,7 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                             fontSize = 20.sp,
                             fontWeight = FontWeight.Bold,
                             fontFamily = FontFamily.Monospace,
-                            maxLines = 1,
+                            maxLines = 2,
                             overflow = TextOverflow.Ellipsis
                         )
                     }
@@ -629,14 +629,14 @@ fun HomeScreen(viewModel: VpnViewModel, onNavigateToConfigs: () -> Unit) {
                                 color = Color.White,
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Medium,
-                                maxLines = 1,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = selectedSrv?.let { "${it.protocol.lowercase()}-${it.networkType}" } ?: "Tap to choose a config",
                                 color = BentoTextSecondary,
                                 fontSize = 11.sp,
-                                maxLines = 1,
+                                maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
                             )
                         }
@@ -895,7 +895,7 @@ fun CompactSelector(label: String, value: String, options: List<String>, modifie
         ) {
             Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
                 Text(label.uppercase(), color = CyberTextSecondary, fontSize = 8.sp, fontWeight = FontWeight.Bold)
-                Text(value, color = CyberTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(value, color = CyberTextPrimary, fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
             }
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = CyberNavy) {
@@ -1278,7 +1278,7 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                                             color = CyberTextPrimary,
                                             fontSize = 14.sp,
                                             fontWeight = FontWeight.Bold,
-                                            maxLines = 1,
+                                            maxLines = 2,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                         Spacer(modifier = Modifier.height(4.dp))
@@ -1303,7 +1303,7 @@ fun ServerListScreen(viewModel: VpnViewModel) {
                                                 color = CyberTextSecondary,
                                                 fontSize = 11.sp,
                                                 fontFamily = FontFamily.Monospace,
-                                                maxLines = 1,
+                                                maxLines = 2,
                                                 overflow = TextOverflow.Ellipsis,
                                                 modifier = Modifier.weight(1f)
                                             )
@@ -1770,7 +1770,7 @@ fun ServerDetailsDialog(
 ) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(server.name, color = CyberTextPrimary, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+        title = { Text(server.name, color = CyberTextPrimary, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis) },
         text = {
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.heightIn(max = 420.dp)) {
                 val rows = listOf(
@@ -3382,7 +3382,7 @@ fun SubscriptionScreen(viewModel: VpnViewModel) {
                         Column(modifier = Modifier.weight(1f)) {
                             Text(sub.name, color = CyberTextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                             Spacer(modifier = Modifier.height(4.dp))
-                            Text(sub.url, color = CyberTextSecondary, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(sub.url, color = CyberTextSecondary, fontSize = 11.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Spacer(modifier = Modifier.height(8.dp))
                             Row(
                                 modifier = Modifier.fillMaxWidth(),

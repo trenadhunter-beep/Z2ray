@@ -16,8 +16,8 @@ android {
     applicationId = "com.z2ray.android"
     minSdk = 24
     targetSdk = 36
-    versionCode = 1
-    versionName = "1.0"
+    versionCode = 225
+    versionName = "2.2.5"
     buildConfigField("String", "CORE_FLAVOR", "\"$bundledCoreFlavor\"")
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -70,7 +70,7 @@ android {
     abi {
       isEnable = true
       reset()
-      include("arm64-v8a", "armeabi-v7a", "x86_64")
+      include("arm64-v8a", "armeabi-v7a", "x86_64", "x86")
       isUniversalApk = true
     }
   }
